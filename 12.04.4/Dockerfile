@@ -14,7 +14,9 @@ RUN echo '#!/bin/sh' > /usr/sbin/policy-rc.d \
 	&& echo 'APT::Update::Post-Invoke { "rm -f /var/cache/apt/archives/*.deb /var/cache/apt/archives/partial/*.deb /var/cache/apt/*.bin || true"; };' >> /etc/apt/apt.conf.d/no-cache \
 	&& echo 'Dir::Cache::pkgcache ""; Dir::Cache::srcpkgcache "";' >> /etc/apt/apt.conf.d/no-cache \
 	\
-	&& echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/no-languages
+	&& echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/no-languages \
+	\
+	&& echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/02compress-indexes
 
 # enable the universe ?
 RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
