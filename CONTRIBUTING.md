@@ -1,4 +1,4 @@
-<big>TL;DR: <strong>NO PULL REQUESTS PLEASE - JUST OPEN ISSUES TO DISCUSS</strong></big>
+<span style="font-size: 300%;">TL;DR: <strong>NO PULL REQUESTS PLEASE - JUST OPEN ISSUES TO DISCUSS</strong></span>
 
 Git is not a fan of what we're doing here.  To combat this, we use
 `git checkout --orphan`, which very effectively discards all the history of
