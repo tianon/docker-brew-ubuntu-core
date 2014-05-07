@@ -1,4 +1,4 @@
-# TL;DR: **NO PULL REQUESTS PLEASE - JUST OPEN ISSUES TO DISCUSS**
+# tl;dr: NO PULL REQUESTS PLEASE - JUST OPEN ISSUES TO DISCUSS
 
 Git is not a fan of what we're doing here.  To combat this, we use
 `git checkout --orphan`, which very effectively discards all the history of
