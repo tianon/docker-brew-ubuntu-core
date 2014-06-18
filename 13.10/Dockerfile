@@ -21,3 +21,6 @@ RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
 
 # heartbleed!
 RUN apt-get update && apt-get install -y $(dpkg-query -W '*ssl*' | awk '{ print $1 }')
+
+# CVE-2014-0224
+RUN apt-get update && apt-get install -y libssl1.0.0=1.0.1e-3ubuntu1.5

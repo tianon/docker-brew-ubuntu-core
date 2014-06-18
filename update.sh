@@ -47,7 +47,22 @@ RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
 
 # heartbleed!
 RUN apt-get update && apt-get install -y $(dpkg-query -W '*ssl*' | awk '{ print $1 }')
+
+# CVE-2014-0224
 EOF
+		sslVersion=
+		case "$v" in
+			12.04.4) sslVersion='1.0.1-4ubuntu5.15' ;;
+			13.10) sslVersion='1.0.1e-3ubuntu1.5' ;;
+			14.04) sslVersion='1.0.1f-1ubuntu2.3' ;;
+		esac
+		
+		if [ "$sslVersion" ]; then
+			echo "RUN apt-get update && apt-get install -y libssl1.0.0=$sslVersion" >> Dockerfile
+		else
+			echo '# THIS VERSION OF UBUNTU IS NO LONGER ACTIVELY SUPPORTED' >> Dockerfile
+			echo '# USE AT YOUR OWN PERIL' >> Dockerfile
+		fi
 	)
 done
 

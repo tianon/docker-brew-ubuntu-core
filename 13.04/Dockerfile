@@ -21,3 +21,7 @@ RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
 
 # heartbleed!
 RUN apt-get update && apt-get install -y $(dpkg-query -W '*ssl*' | awk '{ print $1 }')
+
+# CVE-2014-0224
+# THIS VERSION OF UBUNTU IS NO LONGER ACTIVELY SUPPORTED
+# USE AT YOUR OWN PERIL
