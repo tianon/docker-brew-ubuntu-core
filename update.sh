@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+currentDaily='utopic'
+
 cd "$(dirname "$BASH_SOURCE")"
 
 versions=( "$@" )
@@ -13,8 +15,12 @@ for v in "${versions[@]}"; do
 	(
 		cd "$v"
 		thisTar="$v-core-amd64.tar.gz"
-		wget -qN "http://cdimage.ubuntu.com/ubuntu-core/$v/daily/current/"{MD5,SHA{1,256}}SUMS{,.gpg}
-		wget -N "http://cdimage.ubuntu.com/ubuntu-core/$v/daily/current/$thisTar"
+		baseUrl="http://cdimage.ubuntu.com/ubuntu-core"
+		if [ "$currentDaily" != "$v" ]; then
+			baseUrl="$baseUrl/$v"
+		fi
+		wget -qN "$baseUrl/daily/current/"{MD5,SHA{1,256}}SUMS{,.gpg}
+		wget -N "$baseUrl/daily/current/$thisTar"
 		sha256sum="$(sha256sum "$thisTar" | cut -d' ' -f1)"
 		if ! grep -q "$sha256sum" SHA256SUMS; then
 			echo >&2 "error: '$thisTar' has invalid SHA256"
