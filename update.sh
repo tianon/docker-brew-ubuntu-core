@@ -60,6 +60,9 @@ RUN rm -rf /var/lib/apt/lists/*
 # enable the universe
 RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
 
+# upgrade packages for now, since the tarballs aren't updated frequently enough
+RUN apt-get update && apt-get dist-upgrade -y && rm -rf /var/lib/apt/lists/*
+
 # overwrite this with 'CMD []' in a dependent Dockerfile
 CMD ["/bin/bash"]
 EOF
