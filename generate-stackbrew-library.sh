@@ -15,7 +15,13 @@ versions=( */ )
 versions=( "${versions[@]%/}" )
 url='git://github.com/tianon/docker-brew-ubuntu-core'
 
-echo '# maintainer: Tianon Gravi <admwiggin@gmail.com> (@tianon)'
+cat <<-'EOH'
+# maintainer: Tianon Gravi <admwiggin@gmail.com> (@tianon)
+
+# see https://wiki.ubuntu.com/Core#Current_Releases
+# see also https://wiki.ubuntu.com/Releases#Current
+# see also http://cdimage.ubuntu.com/ubuntu-core/
+EOH
 
 for version in "${versions[@]}"; do
 	commit="$(git log -1 --format='format:%H' "$version")"
