@@ -14,12 +14,13 @@ versions=( "${versions[@]%/}" )
 for v in "${versions[@]}"; do
 	(
 		cd "$v"
-		thisTar="$v-core-amd64.tar.gz"
+		thisTarBase="$v-core-amd64"
+		thisTar="$thisTarBase.tar.gz"
 		baseUrl="http://cdimage.ubuntu.com/ubuntu-core"
 		if [ "$currentDaily" != "$v" ]; then
 			baseUrl="$baseUrl/$v"
 		fi
-		wget -qN "$baseUrl/daily/current/"{MD5,SHA{1,256}}SUMS{,.gpg}
+		wget -qN "$baseUrl/daily/current/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest"}
 		wget -N "$baseUrl/daily/current/$thisTar"
 		sha256sum="$(sha256sum "$thisTar" | cut -d' ' -f1)"
 		if ! grep -q "$sha256sum" SHA256SUMS; then
