@@ -52,17 +52,17 @@ RUN echo '#!/bin/sh' > /usr/sbin/policy-rc.d \
 	\
 	&& echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/docker-no-languages \
 	\
-	&& echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/docker-gzip-indexes
+	&& echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/docker-gzip-indexes \
 
 # delete all the apt list files since they're big and get stale quickly
-RUN rm -rf /var/lib/apt/lists/*
+rm -rf /var/lib/apt/lists/* \
 # this forces "apt-get update" in dependent images, which is also good
 
 # enable the universe
-RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
+sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list \
 
 # upgrade packages for now, since the tarballs aren't updated frequently enough
-RUN apt-get update && apt-get dist-upgrade -y && rm -rf /var/lib/apt/lists/*
+apt-get update && apt-get dist-upgrade -y && rm -rf /var/lib/apt/lists/*
 
 # overwrite this with 'CMD []' in a dependent Dockerfile
 CMD ["/bin/bash"]
