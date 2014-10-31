@@ -11,5 +11,6 @@ intentionally left the issue tracker here open for just such discussion!
 However, please do not submit pull requests.  Due to this repo's unique
 nature, pull requests are not only impossible to review, but also break the
 orphaned history and increase repository clone times for everyone (most
-importantly for the [stackbrew](https://github.com/dotcloud/stackbrew)
-maintainers who have to test and deploy these images often).
+importantly for the
+[official-images](https://github.com/docker-library/official-images) maintainers
+who have to test and deploy these images often).
