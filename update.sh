@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-currentDaily='utopic'
+currentDaily='vivid'
 
 cd "$(dirname "$BASH_SOURCE")"
 
