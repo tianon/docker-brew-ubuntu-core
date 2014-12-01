@@ -32,12 +32,12 @@ fi
 
 arch="$(dpkg --print-architecture)"
 for version in "${versions[@]}"; do
-	commit="$(git log -1 --format='format:%H' -- "$version")"
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' "$version/build-info.txt")"
+	commit="$(git log -1 --format='format:%H' -- "$version/$arch")"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' "$version/$arch/build-info.txt")"
 	
 	versionAliases=()
 	if [ -z "${noVersion[$version]}" ]; then
-		tarball="$version/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
+		tarball="$version/$arch/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
 		fullVersion="$(tar -xvf "$tarball" etc/debian_version --to-stdout 2>/dev/null)"
 		if [ -z "$fullVersion" ] || [[ "$fullVersion" == */sid ]]; then
 			fullVersion="$(eval "$(tar -xvf "$tarball" etc/os-release --to-stdout 2>/dev/null)" && echo "$VERSION" | cut -d' ' -f1)"

@@ -12,7 +12,7 @@ versions=( "${versions[@]%/}" )
 arch="$(dpkg --print-architecture)"
 for v in "${versions[@]}"; do
 	(
-		cd "$v"
+		cd "$v/$arch"
 		thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 		thisTar="$thisTarBase-root.tar.gz"
 		baseUrl="https://partner-images.canonical.com/core/$v/current"
@@ -62,5 +62,5 @@ done
 user="$(docker info | awk '/^Username:/ { print $2 }')"
 [ -z "$user" ] || user="$user/"
 for v in "${versions[@]}"; do
-	( set -x; docker build -t "${user}ubuntu-core:$v" "$v" )
+	( set -x; docker build -t "${user}ubuntu-core:$v" "$v/$arch" )
 done

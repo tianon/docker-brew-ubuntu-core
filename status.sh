@@ -12,7 +12,7 @@ versions=( "${versions[@]%/}" )
 arch="$(dpkg --print-architecture)"
 for v in "${versions[@]}"; do
 	(
-		cd "$v"
+		cd "$v/$arch"
 		#thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 		#baseUrl="https://partner-images.canonical.com/core/$v/current"
 		serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' build-info.txt)"
