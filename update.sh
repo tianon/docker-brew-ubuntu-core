@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-currentDaily='vivid'
-
 cd "$(dirname "$BASH_SOURCE")"
 
 versions=( "$@" )
@@ -11,17 +9,15 @@ if [ ${#versions[@]} -eq 0 ]; then
 fi
 versions=( "${versions[@]%/}" )
 
+arch="$(dpkg --print-architecture)"
 for v in "${versions[@]}"; do
 	(
 		cd "$v"
-		thisTarBase="$v-core-amd64"
-		thisTar="$thisTarBase.tar.gz"
-		baseUrl="http://cdimage.ubuntu.com/ubuntu-core"
-		if [ "$currentDaily" != "$v" ]; then
-			baseUrl="$baseUrl/$v"
-		fi
-		wget -qN "$baseUrl/daily/current/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest"}
-		wget -N "$baseUrl/daily/current/$thisTar"
+		thisTarBase="ubuntu-$v-core-cloudimg-$arch"
+		thisTar="$thisTarBase-root.tar.gz"
+		baseUrl="https://partner-images.canonical.com/core/$v/current"
+		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'}
+		wget -N "$baseUrl/$thisTar"
 		sha256sum="$(sha256sum "$thisTar" | cut -d' ' -f1)"
 		if ! grep -q "$sha256sum" SHA256SUMS; then
 			echo >&2 "error: '$thisTar' has invalid SHA256"
@@ -54,15 +50,8 @@ RUN echo '#!/bin/sh' > /usr/sbin/policy-rc.d \
 	\
 	&& echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/docker-gzip-indexes
 
-# delete all the apt list files since they're big and get stale quickly
-RUN rm -rf /var/lib/apt/lists/*
-# this forces "apt-get update" in dependent images, which is also good
-
 # enable the universe
 RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
-
-# upgrade packages for now, since the tarballs aren't updated frequently enough
-RUN apt-get update && apt-get dist-upgrade -y && rm -rf /var/lib/apt/lists/*
 
 # overwrite this with 'CMD []' in a dependent Dockerfile
 CMD ["/bin/bash"]

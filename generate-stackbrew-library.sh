@@ -18,9 +18,8 @@ url='git://github.com/tianon/docker-brew-ubuntu-core'
 cat <<-'EOH'
 # maintainer: Tianon Gravi <admwiggin@gmail.com> (@tianon)
 
-# see https://wiki.ubuntu.com/Core#Current_Releases
+# see https://partner-images.canonical.com/core/
 # see also https://wiki.ubuntu.com/Releases#Current
-# see also http://cdimage.ubuntu.com/ubuntu-core/
 EOH
 
 commitRange='master..dist'
@@ -31,13 +30,19 @@ if [ "$commitCount" ] && [ "$commitCount" -gt 0 ]; then
 	git log --oneline "$commitRange" | sed 's/^/#  - /'
 fi
 
+arch="$(dpkg --print-architecture)"
 for version in "${versions[@]}"; do
-	commit="$(git log -1 --format='format:%H' "$version")"
+	commit="$(git log -1 --format='format:%H' -- "$version")"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' "$version/build-info.txt")"
+	
 	versionAliases=()
 	if [ -z "${noVersion[$version]}" ]; then
-		fullVersion="$(tar -xvf "$version/${version}-core-amd64.tar.gz" etc/debian_version --to-stdout 2>/dev/null)"
+		tarball="$version/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
+		fullVersion="$(tar -xvf "$tarball" etc/debian_version --to-stdout 2>/dev/null)"
 		if [ -z "$fullVersion" ] || [[ "$fullVersion" == */sid ]]; then
-			fullVersion="$(eval "$(tar -xvf "$version/${version}-core-amd64.tar.gz" etc/os-release --to-stdout 2>/dev/null)" && echo "$VERSION" | cut -d' ' -f1)"
+			fullVersion="$(eval "$(tar -xvf "$tarball" etc/os-release --to-stdout 2>/dev/null)" && echo "$VERSION" | cut -d' ' -f1)"
+		fi
+		if [ "$fullVersion" ]; then
 			versionAliases+=( $fullVersion )
 			if [ "${fullVersion%.*.*}" != "$fullVersion" ]; then
 				# three part version like "12.04.4"
@@ -45,6 +50,7 @@ for version in "${versions[@]}"; do
 			fi
 		fi
 	fi
+	# TODO something cool/useful with $serial
 	versionAliases+=( $version ${aliases[$version]} )
 	
 	echo
