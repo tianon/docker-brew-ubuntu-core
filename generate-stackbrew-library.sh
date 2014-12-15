@@ -54,6 +54,7 @@ for version in "${versions[@]}"; do
 	versionAliases+=( $version ${aliases[$version]} )
 	
 	echo
+	echo "# $serial"
 	for va in "${versionAliases[@]}"; do
 		echo "$va: ${url}@${commit} $version"
 	done
