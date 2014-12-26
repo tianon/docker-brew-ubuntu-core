@@ -27,7 +27,7 @@ commitCount="$(git rev-list "$commitRange" --count 2>/dev/null || true)"
 if [ "$commitCount" ] && [ "$commitCount" -gt 0 ]; then
 	echo
 	echo '# commits:' "($commitRange)"
-	git log --oneline "$commitRange" | sed 's/^/#  - /'
+	git log --format=format:'- %h %s%n%w(0,2,2)%b' "$commitRange" | sed 's/^/#  /'
 fi
 
 arch="$(dpkg --print-architecture)"
