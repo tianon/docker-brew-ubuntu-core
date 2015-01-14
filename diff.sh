@@ -3,6 +3,26 @@ set -e
 
 cd "$(dirname "$BASH_SOURCE")"
 
+get_part() {
+	local dir="$1"
+	shift
+	local part="$1"
+	shift
+	if [ -f "$dir/$part" ]; then
+		cat "$dir/$part"
+		return 0
+	fi
+	if [ -f "$part" ]; then
+		cat "$part"
+		return 0
+	fi
+	if [ $# -gt 0 ]; then
+		echo "$1"
+		return 0
+	fi
+	return 1
+}
+
 args=( "$@" )
 if [ ${#args[@]} -eq 0 ]; then
 	args=( */ )
@@ -58,6 +78,12 @@ done
 for task in "${tasks[@]}"; do
 	v=$(echo $task | cut -d / -f 1)
 	arch=$(echo $task | cut -d / -f 2)
+
+	skip="$(get_part "$task" skip '')"
+	if [ -n "$skip" ]; then
+		echo "Skipping $v/$arch, reason: $skip"
+		continue;
+	fi
 
 	(
 		cd "$v"

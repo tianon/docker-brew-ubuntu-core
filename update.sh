@@ -3,6 +3,26 @@ set -e
 
 cd "$(dirname "$BASH_SOURCE")"
 
+get_part() {
+	local dir="$1"
+	shift
+	local part="$1"
+	shift
+	if [ -f "$dir/$part" ]; then
+		cat "$dir/$part"
+		return 0
+	fi
+	if [ -f "$part" ]; then
+		cat "$part"
+		return 0
+	fi
+	if [ $# -gt 0 ]; then
+		echo "$1"
+		return 0
+	fi
+	return 1
+}
+
 user="$(docker info | awk '/^Username:/ { print $2 }')"
 [ -z "$user" ] || user="$user/"
 
@@ -54,17 +74,66 @@ for v in "${versions[@]}"; do
 	name=arches_$v
 	eval arches=\( \${${name}[@]} \)
 	for arch in "${arches[@]}"; do
+		dir="$(readlink -f "$v/$arch")"
+
+		skip="$(get_part "$dir" skip '')"
+		if [ -n "$skip" ]; then
+			echo "Skipping $v/$arch, reason: $skip"
+			continue;
+		fi
+
 		tasks+=( $v/$arch )
 	done
 done
 
 systemArch="$(dpkg --print-architecture)"
+
+get_qemu_arch() {
+	local arch="$1"
+
+	if [ "$arch" = "$systemArch" ]; then
+		return 0
+	fi
+
+	case "$systemArch-$arch" in
+		amd64-i386|arm-armel|armel-arm|arm-armhf|armhf-arm|armel-armhf|armhf-armel|i386-amd64|powerpc-ppc64|ppc64-powerpc|sparc-sparc64|sparc64-sparc|s390-s390x|s390x-s390)
+			return 0
+			;;
+	esac
+
+	qemuArch=""
+	case "$arch" in
+		alpha|arm|armeb|i386|m68k|mips|mipsel|ppc64|sh4|sh4eb|sparc|sparc64|s390x)
+			qemuArch="$arch"
+			;;
+		amd64)
+			qemuArch="x86_64"
+			;;
+		armel|armhf)
+			qemuArch="arm"
+			;;
+		arm64)
+			qemuArch="aarch64"
+			;;
+		lpia)
+			qemuArch="i386"
+			;;
+		powerpc|powerpcspe)
+			qemuArch="ppc"
+			;;
+		*)
+			echo >&2 "Sorry, I don't know how to support arch $arch"
+			exit 1
+			;;
+	esac
+
+	echo $qemuArch
+	return 0
+}
+
 for task in "${tasks[@]}"; do
 	v=$(echo $task | cut -d / -f 1)
 	arch=$(echo $task | cut -d / -f 2)
-	if [ "$arch" != "$systemArch" ]; then
-		continue;
-	fi
 
 	baseUrl="https://partner-images.canonical.com/core/$v/current"
 	(
@@ -86,7 +155,20 @@ for task in "${tasks[@]}"; do
 FROM scratch
 ADD $thisTar /
 EOF
-		
+
+		qemuArch="$(get_qemu_arch $arch)"
+		if [ "x$qemuArch" != "x" ]; then
+			qemuUserBin="$(which qemu-$qemuArch-static 2>&1)"
+			if [ -z "$qemuUserBin" ]; then
+				echo >&2 "Sorry, couldn't find binary qemu-$qemuArch-static"
+				exit 1
+			fi
+			cp $qemuUserBin .
+			cat >> Dockerfile <<EOF
+ADD $(basename $qemuUserBin) $qemuUserBin
+EOF
+		fi
+
 		cat >> Dockerfile <<'EOF'
 
 # a few minor docker-specific tweaks
@@ -119,6 +201,9 @@ EOF
 
 	(
 		set -x
-		docker build -t "${user}ubuntu-core:$v" "$v/$arch"
+		docker build -t "${user}ubuntu-core:$v-$arch" "$v/$arch"
+		if [ "$arch" == "$systemArch" ]; then
+			docker tag -f "${user}ubuntu-core:$v-$arch" "${user}ubuntu-core:$v"
+		fi
 	)
 done
