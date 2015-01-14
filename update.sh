@@ -3,23 +3,82 @@ set -e
 
 cd "$(dirname "$BASH_SOURCE")"
 
-versions=( "$@" )
-if [ ${#versions[@]} -eq 0 ]; then
-	versions=( */ )
-fi
-versions=( "${versions[@]%/}" )
+user="$(docker info | awk '/^Username:/ { print $2 }')"
+[ -z "$user" ] || user="$user/"
 
-arch="$(dpkg --print-architecture)"
+args=( "$@" )
+if [ ${#args[@]} -eq 0 ]; then
+	args=( */ )
+fi
+
+versions=()
+for arg in "${args[@]}"; do
+	arg=${arg%/}
+	arch=$(echo $arg | cut -d / -f 2)
+	v=$(echo $arg | cut -d / -f 1)
+	if [ "$arch" == "$v" ]; then
+		arch=
+	fi
+
+	if [ -z "`echo ${versions[@]} | grep $v`" ]; then
+		versions+=( $v )
+	fi
+
+	name=arches_$v
+	if [ "$arch" ]; then
+		eval arches=\( \${${name}[@]} \)
+		if [ ${#arches[@]} -ne 0 ]; then
+			if [ -z "`echo ${arches[@]} | grep $arch`" ]; then
+				eval $name+=\( "$arch" \)
+			fi
+		else
+			eval $name=\( "$arch" \)
+		fi
+	else
+		arches=( $v/*/ )
+		arches=( "${arches[@]%/}" )
+		arches=( "${arches[@]#$v/}" )
+		if [ ${#arches[@]} -lt 0 -o "${arches[0]}" != "*" ]; then
+			eval $name=\( ${arches[@]} \)
+		fi
+	fi
+
+	#echo "arch: $arch, v: $v"
+	#echo "versions: ${versions[@]}"
+	#eval echo "$name: \${${name}[@]}"
+	#echo
+done
+
+tasks=()
 for v in "${versions[@]}"; do
+	name=arches_$v
+	eval arches=\( \${${name}[@]} \)
+	for arch in "${arches[@]}"; do
+		tasks+=( $v/$arch )
+	done
+done
+
+systemArch="$(dpkg --print-architecture)"
+for task in "${tasks[@]}"; do
+	v=$(echo $task | cut -d / -f 1)
+	arch=$(echo $task | cut -d / -f 2)
+	if [ "$arch" != "$systemArch" ]; then
+		continue;
+	fi
+
+	baseUrl="https://partner-images.canonical.com/core/$v/current"
+	(
+		cd "$v"
+		wget -cqN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},'unpacked/build-info.txt'}
+	)
+
 	(
 		cd "$v/$arch"
 		thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 		thisTar="$thisTarBase-root.tar.gz"
-		baseUrl="https://partner-images.canonical.com/core/$v/current"
-		wget -cqN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'}
-		wget -cN "$baseUrl/$thisTar"
+		wget -cN "$baseUrl/"{"$thisTar","$thisTarBase.manifest"}
 		sha256sum="$(sha256sum "$thisTar" | cut -d' ' -f1)"
-		if ! grep -q "$sha256sum" SHA256SUMS; then
+		if ! grep -q "$sha256sum" ../SHA256SUMS; then
 			echo >&2 "error: '$thisTar' has invalid SHA256"
 			exit 1
 		fi
@@ -57,10 +116,9 @@ RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
 CMD ["/bin/bash"]
 EOF
 	)
-done
 
-user="$(docker info | awk '/^Username:/ { print $2 }')"
-[ -z "$user" ] || user="$user/"
-for v in "${versions[@]}"; do
-	( set -x; docker build -t "${user}ubuntu-core:$v" "$v/$arch" )
+	(
+		set -x
+		docker build -t "${user}ubuntu-core:$v" "$v/$arch"
+	)
 done

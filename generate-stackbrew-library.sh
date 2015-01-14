@@ -33,7 +33,7 @@ fi
 arch="$(dpkg --print-architecture)"
 for version in "${versions[@]}"; do
 	commit="$(git log -1 --format='format:%H' -- "$version/$arch")"
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' "$version/$arch/build-info.txt")"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' "$version/build-info.txt")"
 	
 	versionAliases=()
 	if [ -z "${noVersion[$version]}" ]; then
