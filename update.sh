@@ -16,8 +16,8 @@ for v in "${versions[@]}"; do
 		thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 		thisTar="$thisTarBase-root.tar.gz"
 		baseUrl="https://partner-images.canonical.com/core/$v/current"
-		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'}
-		wget -N "$baseUrl/$thisTar"
+		wget -cqN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'}
+		wget -cN "$baseUrl/$thisTar"
 		sha256sum="$(sha256sum "$thisTar" | cut -d' ' -f1)"
 		if ! grep -q "$sha256sum" SHA256SUMS; then
 			echo >&2 "error: '$thisTar' has invalid SHA256"
