@@ -50,8 +50,7 @@ for version in "${versions[@]}"; do
 			fi
 		fi
 	fi
-	# TODO something cool/useful with $serial
-	versionAliases+=( $version ${aliases[$version]} )
+	versionAliases+=( $version-$serial $version ${aliases[$version]} )
 	
 	echo
 	echo "# $serial"
