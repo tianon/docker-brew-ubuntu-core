@@ -98,10 +98,9 @@ for task in "${tasks[@]}"; do
 			fi
 		fi
 	fi
-	# TODO something cool/useful with $serial
-	versionAliases+=( $version-$arch )
+	versionAliases+=( $version-$arch-$serial $version-$arch )
 	if [ "$arch" == "$systemArch" ]; then
-		versionAliases+=( $version )
+		versionAliases+=( $version-$serial $version )
 	fi
 	if [ "x${aliases[$version]}" != "x" ]; then
 		versionAliases+=( ${aliases[$version]}-$arch )
