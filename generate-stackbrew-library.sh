@@ -17,8 +17,9 @@ url='git://github.com/tianon/docker-brew-ubuntu-core'
 
 cat <<-'EOH'
 # maintainer: Tianon Gravi <admwiggin@gmail.com> (@tianon)
-
+# proxy for upstream's official builds
 # see https://partner-images.canonical.com/core/
+
 # see also https://wiki.ubuntu.com/Releases#Current
 EOH
 
