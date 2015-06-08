@@ -56,8 +56,9 @@ url='git://github.com/vicamo/docker-brew-ubuntu-core'
 
 cat <<-'EOH'
 # maintainer: You-Sheng Yang <vicamo@gmail.com> (@vicamo)
-
+# proxy for upstream's official builds
 # see https://partner-images.canonical.com/core/
+
 # see also https://wiki.ubuntu.com/Releases#Current
 EOH
 
