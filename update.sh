@@ -121,6 +121,9 @@ get_qemu_arch() {
 		powerpc|powerpcspe)
 			qemuArch="ppc"
 			;;
+		ppc64el)
+			qemuArch="ppc64le"
+			;;
 		*)
 			echo >&2 "Sorry, I don't know how to support arch $arch"
 			exit 1
