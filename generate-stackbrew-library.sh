@@ -16,7 +16,7 @@ versions=( "${versions[@]%/}" )
 url='git://github.com/tianon/docker-brew-ubuntu-core'
 
 cat <<-'EOH'
-# maintainer: Tianon Gravi <admwiggin@gmail.com> (@tianon)
+# maintainer: Tianon Gravi <tianon@debian.org> (@tianon)
 # proxy for upstream's official builds
 # see https://partner-images.canonical.com/core/
 
