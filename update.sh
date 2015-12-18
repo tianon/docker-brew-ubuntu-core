@@ -16,7 +16,10 @@ for v in "${versions[@]}"; do
 		thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 		thisTar="$thisTarBase-root.tar.gz"
 		baseUrl="https://partner-images.canonical.com/core/$v"
-		if wget -q --spider "$baseUrl/current"; then
+		if \
+			wget -q --spider "$baseUrl/current" \
+			&& wget -q --spider "$baseUrl/current/$thisTar" \
+		; then
 			baseUrl+='/current'
 		else
 			# must be xenial, lols (no "current" symlink)
