@@ -59,8 +59,19 @@ EOF
 	)
 done
 
-user="$(docker info | awk '/^Username:/ { print $2 }')"
-[ -z "$user" ] || user="$user/"
+repo="$(cat repo 2>/dev/null || true)"
+if [ -z "$repo" ]; then
+	user="$(docker info | awk -F ': ' '$1 == "Username" { print $2; exit }')"
+	repo="${user:+$user/}ubuntu-core"
+fi
+latest="$(< latest)"
 for v in "${versions[@]}"; do
-	( set -x; docker build -t "${user}ubuntu-core:$v" "$v" )
+	( set -x; docker build -t "$repo:$v" "$v" )
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' "$v/build-info.txt")"
+	if [ "$serial" ]; then
+		( set -x; docker tag -f "$repo:$v" "$repo:$v-$serial" )
+	fi
+	if [ "$v" = "$latest" ]; then
+		( set -x; docker tag -f "$repo:$v" "$repo:latest" )
+	fi
 done
