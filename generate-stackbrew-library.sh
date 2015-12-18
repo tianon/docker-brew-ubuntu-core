@@ -34,9 +34,13 @@ fi
 arch="$(dpkg --print-architecture)"
 for version in "${versions[@]}"; do
 	commit="$(git log -1 --format='format:%H' -- "$version")"
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt")"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>&1 || true)"
+	[ "$serial" ] || continue
 	
 	versionAliases=()
+	
+	[ -s "$version/alias" ] && versionAliases+=( $(< "$version/alias") )
+	
 	if [ -z "${noVersion[$version]}" ]; then
 		tarball="$version/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
 		fullVersion="$(tar -xvf "$tarball" etc/debian_version --to-stdout 2>/dev/null)"
@@ -44,10 +48,11 @@ for version in "${versions[@]}"; do
 			fullVersion="$(eval "$(tar -xvf "$tarball" etc/os-release --to-stdout 2>/dev/null)" && echo "$VERSION" | cut -d' ' -f1)"
 		fi
 		if [ "$fullVersion" ]; then
-			versionAliases+=( $fullVersion )
+			#versionAliases+=( $fullVersion )
 			if [ "${fullVersion%.*.*}" != "$fullVersion" ]; then
 				# three part version like "12.04.4"
-				versionAliases+=( ${fullVersion%.*} )
+				#versionAliases+=( ${fullVersion%.*} )
+				versionAliases=( $fullVersion "${versionAliases[@]}" )
 			fi
 		fi
 	fi
