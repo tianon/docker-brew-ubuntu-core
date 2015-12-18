@@ -15,13 +15,37 @@ for v in "${versions[@]}"; do
 		cd "$v"
 		thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 		thisTar="$thisTarBase-root.tar.gz"
-		baseUrl="https://partner-images.canonical.com/core/$v/current"
-		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'}
+		baseUrl="https://partner-images.canonical.com/core/$v"
+		if wget -q --spider "$baseUrl/current"; then
+			baseUrl+='/current'
+		else
+			# must be xenial, lols (no "current" symlink)
+			# also sometimes we don't get all the tarballs we expect
+			# (so we get to try more than one of these directories)
+			toAttempt=( $(wget -qO- "$baseUrl/" | awk -F '</?a[^>]*>' '$2 ~ /^[0-9.]+\/$/ { gsub(/\/$/, "", $2); print $2 }' | sort -rn) )
+			current=
+			for attempt in "${toAttempt[@]}"; do
+				if wget -q --spider "$baseUrl/$attempt/$thisTar"; then
+					current="$attempt"
+					break
+				fi
+			done
+			if [ -z "$current" ]; then
+				echo >&2 "warning: cannot find 'current' for $v"
+				echo >&2 "  (checked all dirs under $baseUrl/)"
+				continue
+			fi
+			baseUrl+="/$current"
+			echo "SERIAL=$current" > build-info.txt
+		fi
+		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'} || true
 		wget -N "$baseUrl/$thisTar"
-		sha256sum="$(sha256sum "$thisTar" | cut -d' ' -f1)"
-		if ! grep -q "$sha256sum" SHA256SUMS; then
-			echo >&2 "error: '$thisTar' has invalid SHA256"
-			exit 1
+		if [ -f SHA256SUMS ]; then
+			sha256sum="$(sha256sum "$thisTar" | cut -d' ' -f1)"
+			if ! grep -q "$sha256sum" SHA256SUMS; then
+				echo >&2 "error: '$thisTar' has invalid SHA256"
+				exit 1
+			fi
 		fi
 		cat > Dockerfile <<EOF
 FROM scratch
@@ -67,7 +91,7 @@ fi
 latest="$(< latest)"
 for v in "${versions[@]}"; do
 	( set -x; docker build -t "$repo:$v" "$v" )
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' "$v/build-info.txt")"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt")"
 	if [ "$serial" ]; then
 		( set -x; docker tag -f "$repo:$v" "$repo:$v-$serial" )
 	fi
