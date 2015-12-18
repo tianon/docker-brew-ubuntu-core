@@ -9,13 +9,11 @@ if [ ${#versions[@]} -eq 0 ]; then
 fi
 versions=( "${versions[@]%/}" )
 
-arch="$(dpkg --print-architecture)"
 for v in "${versions[@]}"; do
 	(
 		cd "$v"
-		#thisTarBase="ubuntu-$v-core-cloudimg-$arch"
-		#baseUrl="https://partner-images.canonical.com/core/$v/current"
-		serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' build-info.txt)"
+		serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' build-info.txt 2>/dev/null || true)"
+		[ "$serial" ] || serial='missing'
 		echo '- `ubuntu:'"$v"'`: '"$serial"
 	)
 done
