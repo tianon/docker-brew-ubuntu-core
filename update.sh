@@ -90,6 +90,10 @@ if [ -z "$repo" ]; then
 fi
 latest="$(< latest)"
 for v in "${versions[@]}"; do
+	if [ ! -f "$v/Dockerfile" ]; then
+		echo >&2 "warning: $v/Dockerfile does not exist; skipping $v"
+		continue
+	fi
 	( set -x; docker build -t "$repo:$v" "$v" )
 	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt")"
 	if [ "$serial" ]; then
