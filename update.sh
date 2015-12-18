@@ -102,6 +102,11 @@ for v in "${versions[@]}"; do
 	if [ "$serial" ]; then
 		( set -x; docker tag -f "$repo:$v" "$repo:$v-$serial" )
 	fi
+	if [ -s "$v/alias" ]; then
+		for a in $(< "$v/alias"); do
+			( set -x; docker tag -f "$repo:$v" "$repo:$a" )
+		done
+	fi
 	if [ "$v" = "$latest" ]; then
 		( set -x; docker tag -f "$repo:$v" "$repo:latest" )
 	fi
