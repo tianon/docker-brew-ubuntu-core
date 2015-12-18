@@ -10,10 +10,7 @@ fi
 versions=( "${versions[@]%/}" )
 
 for v in "${versions[@]}"; do
-	(
-		cd "$v"
-		serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' build-info.txt 2>/dev/null || true)"
-		[ "$serial" ] || serial='missing'
-		echo '- `ubuntu:'"$v"'`: '"$serial"
-	)
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt" 2>/dev/null || true)"
+	[ "$serial" ] || serial='missing'
+	echo '- `ubuntu:'"$v"'`: '"$serial"
 done
