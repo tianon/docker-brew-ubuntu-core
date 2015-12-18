@@ -9,7 +9,8 @@ if [ ${#versions[@]} -eq 0 ]; then
 fi
 versions=( "${versions[@]%/}" )
 
-arch="$(dpkg --print-architecture)"
+arch="$(cat arch 2>/dev/null || true)"
+: ${arch:=$(dpkg --print-architecture)}
 for v in "${versions[@]}"; do
 	(
 		cd "$v"
