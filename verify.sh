@@ -27,7 +27,7 @@ for v in "${versions[@]}"; do
 	thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 	thisTar="$thisTarBase-root.tar.gz"
 	baseUrl="https://partner-images.canonical.com/core/$v"
-	for sums in sha256 md5; do
+	for sums in sha256 sha1 md5; do
 		sumsFile="$v/${sums^^}SUMS" # "SHA256SUMS"
 		sumCmd="${sums}sum" # "sha256sum"
 		if [ "$gpgFingerprint" ]; then
