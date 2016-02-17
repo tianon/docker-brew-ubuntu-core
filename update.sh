@@ -9,6 +9,8 @@ if [ ${#versions[@]} -eq 0 ]; then
 fi
 versions=( "${versions[@]%/}" )
 
+gpgFingerprint="$(grep -v '^#' gpg-fingerprint 2>/dev/null || true)"
+
 arch="$(cat arch 2>/dev/null || true)"
 : ${arch:=$(dpkg --print-architecture)}
 for v in "${versions[@]}"; do
@@ -44,12 +46,26 @@ for v in "${versions[@]}"; do
 		fi
 		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'} || true
 		wget -N "$baseUrl/$thisTar"
+		if [ ! -f SHA256SUMS.gpg ]; then
+			echo >&2 'warning: SHA256SUMS.gpg appears to be missing!'
+		elif [ -z "$gpgFingerprint" ]; then
+			echo >&2 'warning: missing gpg-fingerprint!!'
+		else
+			(
+				export GNUPGHOME="$(mktemp -d)"
+				gpg --quiet --keyserver ha.pool.sks-keyservers.net --recv-keys "$gpgFingerprint"
+				gpg --quiet --batch --verify SHA256SUMS.gpg SHA256SUMS
+				rm -r "$GNUPGHOME"
+			)
+		fi
 		if [ -f SHA256SUMS ]; then
 			sha256sum="$(sha256sum "$thisTar" | cut -d' ' -f1)"
 			if ! grep -q "$sha256sum" SHA256SUMS; then
 				echo >&2 "error: '$thisTar' has invalid SHA256"
 				exit 1
 			fi
+		else
+			echo >&2 'warning: missing SHA256SUMS!'
 		fi
 		cat > Dockerfile <<EOF
 FROM scratch
