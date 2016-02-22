@@ -11,6 +11,7 @@ versions=( "${versions[@]%/}" )
 
 arch="$(cat arch 2>/dev/null || true)"
 : ${arch:=$(dpkg --print-architecture)}
+toVerify=()
 for v in "${versions[@]}"; do
 	(
 		cd "$v"
@@ -78,9 +79,11 @@ RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
 CMD ["/bin/bash"]
 EOF
 	)
+	
+	toVerify+=( "$v" )
 done
 
-( set -x; ./verify.sh "${versions[@]}" )
+( set -x; ./verify.sh "${toVerify[@]}" )
 
 repo="$(cat repo 2>/dev/null || true)"
 if [ -z "$repo" ]; then
