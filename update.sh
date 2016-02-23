@@ -13,44 +13,46 @@ arch="$(cat arch 2>/dev/null || true)"
 : ${arch:=$(dpkg --print-architecture)}
 toVerify=()
 for v in "${versions[@]}"; do
+	thisTarBase="ubuntu-$v-core-cloudimg-$arch"
+	thisTar="$thisTarBase-root.tar.gz"
+	baseUrl="https://partner-images.canonical.com/core/$v"
+	if \
+		wget -q --spider "$baseUrl/current" \
+		&& wget -q --spider "$baseUrl/current/$thisTar" \
+	; then
+		baseUrl+='/current'
+	else
+		# appears to be missing a "current" symlink (or $arch doesn't exist in /current/)
+		# let's enumerate all the directories and try to find one that's satisfactory
+		toAttempt=( $(wget -qO- "$baseUrl/" | awk -F '</?a[^>]*>' '$2 ~ /^[0-9.]+\/$/ { gsub(/\/$/, "", $2); print $2 }' | sort -rn) )
+		current=
+		for attempt in "${toAttempt[@]}"; do
+			if wget -q --spider "$baseUrl/$attempt/$thisTar"; then
+				current="$attempt"
+				break
+			fi
+		done
+		if [ -z "$current" ]; then
+			echo >&2 "warning: cannot find 'current' for $v"
+			echo >&2 "  (checked all dirs under $baseUrl/)"
+			continue
+		fi
+		baseUrl+="/$current"
+		echo "SERIAL=$current" > "$v/build-info.txt" # this will be overwritten momentarily if this directory has one
+	fi
+	
 	(
 		cd "$v"
-		thisTarBase="ubuntu-$v-core-cloudimg-$arch"
-		thisTar="$thisTarBase-root.tar.gz"
-		baseUrl="https://partner-images.canonical.com/core/$v"
-		if \
-			wget -q --spider "$baseUrl/current" \
-			&& wget -q --spider "$baseUrl/current/$thisTar" \
-		; then
-			baseUrl+='/current'
-		else
-			# must be xenial, lols (no "current" symlink)
-			# also sometimes we don't get all the tarballs we expect
-			# (so we get to try more than one of these directories)
-			toAttempt=( $(wget -qO- "$baseUrl/" | awk -F '</?a[^>]*>' '$2 ~ /^[0-9.]+\/$/ { gsub(/\/$/, "", $2); print $2 }' | sort -rn) )
-			current=
-			for attempt in "${toAttempt[@]}"; do
-				if wget -q --spider "$baseUrl/$attempt/$thisTar"; then
-					current="$attempt"
-					break
-				fi
-			done
-			if [ -z "$current" ]; then
-				echo >&2 "warning: cannot find 'current' for $v"
-				echo >&2 "  (checked all dirs under $baseUrl/)"
-				continue
-			fi
-			baseUrl+="/$current"
-			echo "SERIAL=$current" > build-info.txt
-		fi
 		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'} || true
 		wget -N "$baseUrl/$thisTar"
-		cat > Dockerfile <<EOF
+	)
+	
+	cat > "$v/Dockerfile" <<EOF
 FROM scratch
 ADD $thisTar /
 EOF
-		
-		cat >> Dockerfile <<'EOF'
+	
+	cat >> "$v/Dockerfile" <<'EOF'
 
 # a few minor docker-specific tweaks
 # see https://github.com/docker/docker/blob/master/contrib/mkimage/debootstrap
@@ -78,7 +80,6 @@ RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
 # overwrite this with 'CMD []' in a dependent Dockerfile
 CMD ["/bin/bash"]
 EOF
-	)
 	
 	toVerify+=( "$v" )
 done
