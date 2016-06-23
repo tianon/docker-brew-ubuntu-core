@@ -106,14 +106,14 @@ for v in "${versions[@]}"; do
 	( set -x; docker build -t "$repo:$v" "$v" )
 	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt")"
 	if [ "$serial" ]; then
-		( set -x; docker tag -f "$repo:$v" "$repo:$v-$serial" )
+		( set -x; docker tag "$repo:$v" "$repo:$v-$serial" )
 	fi
 	if [ -s "$v/alias" ]; then
 		for a in $(< "$v/alias"); do
-			( set -x; docker tag -f "$repo:$v" "$repo:$a" )
+			( set -x; docker tag "$repo:$v" "$repo:$a" )
 		done
 	fi
 	if [ "$v" = "$latest" ]; then
-		( set -x; docker tag -f "$repo:$v" "$repo:latest" )
+		( set -x; docker tag "$repo:$v" "$repo:latest" )
 	fi
 done
