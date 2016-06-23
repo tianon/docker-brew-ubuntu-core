@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+cd "$(dirname "$(readlink -f "$BASH_SOURCE")")"
+
 declare -A aliases
 aliases=(
 	[$(< latest)]='latest'
@@ -9,17 +11,17 @@ declare -A noVersion
 noVersion=(
 )
 
-cd "$(dirname "$(readlink -f "$BASH_SOURCE")")"
-
 versions=( */ )
 versions=( "${versions[@]%/}" )
-url='git://github.com/tianon/docker-brew-ubuntu-core'
 
-cat <<-'EOH'
-# maintainer: Tianon Gravi <tianon@debian.org> (@tianon)
-# proxy for upstream's official builds
+cat <<-EOH
+# Maintained by Tianon as proxy for upstream's offical builds.
+
+Maintainers: Tianon Gravi <tianon@debian.org> (@tianon)
+GitRepo: https://github.com/tianon/docker-brew-ubuntu-core.git
+GitFetch: refs/heads/dist
+
 # see https://partner-images.canonical.com/core/
-
 # see also https://wiki.ubuntu.com/Releases#Current
 EOH
 
@@ -31,21 +33,29 @@ if [ "$commitCount" ] && [ "$commitCount" -gt 0 ]; then
 	git log --format=format:'- %h %s%n%w(0,2,2)%b' "$commitRange" | sed 's/^/#  /'
 fi
 
+# prints "$2$1$3$1...$N"
+join() {
+	local sep="$1"; shift
+	local out; printf -v out "${sep//%/%%}%s" "$@"
+	echo "${out#$sep}"
+}
+
 arch="$(dpkg --print-architecture)"
 for version in "${versions[@]}"; do
+	tarball="$version/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
 	commit="$(git log -1 --format='format:%H' -- "$version")"
+
 	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>&1 || true)"
 	[ "$serial" ] || continue
-	
+
 	versionAliases=()
-	
+
 	[ -s "$version/alias" ] && versionAliases+=( $(< "$version/alias") )
-	
+
 	if [ -z "${noVersion[$version]}" ]; then
-		tarball="$version/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
-		fullVersion="$(tar -xvf "$tarball" etc/debian_version --to-stdout 2>/dev/null)"
+		fullVersion="$(git show "$commit:$tarball" | tar -xvz etc/debian_version --to-stdout 2>/dev/null || true)"
 		if [ -z "$fullVersion" ] || [[ "$fullVersion" == */sid ]]; then
-			fullVersion="$(eval "$(tar -xvf "$tarball" etc/os-release --to-stdout 2>/dev/null)" && echo "$VERSION" | cut -d' ' -f1)"
+			fullVersion="$(eval "$(git show "$commit:$tarball" | tar -xvz etc/os-release --to-stdout 2>/dev/null || true)" && echo "$VERSION" | cut -d' ' -f1)"
 		fi
 		if [ "$fullVersion" ]; then
 			#versionAliases+=( $fullVersion )
@@ -57,10 +67,12 @@ for version in "${versions[@]}"; do
 		fi
 	fi
 	versionAliases+=( $version-$serial $version ${aliases[$version]} )
-	
+
 	echo
-	echo "# $serial"
-	for va in "${versionAliases[@]}"; do
-		echo "$va: ${url}@${commit} $version"
-	done
+	cat <<-EOE
+		# $serial
+		Tags: $(join ', ' "${versionAliases[@]}")
+		GitCommit: $commit
+		Directory: $version
+	EOE
 done
