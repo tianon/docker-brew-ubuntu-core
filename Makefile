@@ -84,10 +84,12 @@ $(if $(filter $(DEFAULT_ARCH),$(2)),$(1)) \
 $(if $(filter $(LATEST),$(1)),latest-$(2) $(if $(filter $(DEFAULT_ARCH),$(2)),latest)) \
 \
 $(eval roottar := $(1)/$(2)/$(call roottar-filename,$(1),$(2))) \
-$(if $(wildcard $(roottar)),,$(error `make downloads` before `make all`)) \
-$(eval fullver := $(shell tar -xvf "$(roottar)" etc/debian_version --to-stdout 2>/dev/null)) \
-$(if $(filter %/sid,$(fullver) $(if $(fullver),,/sid)), \
-  $(eval fullver := $(word 2,$(subst $(DQUOTE), ,$(filter VERSION_ID=%,$(shell tar -xvf $(roottar) etc/os-release --to-stdout 2>/dev/null))))) \
+$(if $(wildcard $(roottar)), \
+  $(eval fullver := $(shell tar -xvf "$(roottar)" etc/debian_version --to-stdout 2>/dev/null)) \
+  $(if $(filter %/sid,$(fullver) $(if $(fullver),,/sid)), \
+    $(eval fullver := $(word 2,$(subst $(DQUOTE), ,$(filter VERSION_ID=%,$(shell tar -xvf $(roottar) etc/os-release --to-stdout 2>/dev/null))))) \
+  ), \
+  $(eval fullver :=) \
 ) \
 $(if $(fullver), \
   $(fullver)-$(2) $(if $(filter $(DEFAULT_ARCH),$(2)),$(fullver)) \
@@ -97,9 +99,11 @@ $(if $(fullver), \
   ) \
 ) \
 \
-$(eval serial := $(shell awk -F '=' '$$1 == "SERIAL" { print $$2 }' "$(1)/build-info.txt")) \
-$(eval $(1)-$(2)_SERIAL := $(serial)) \
-$(1)-$(2)-$(serial) $(if $(filter $(DEFAULT_ARCH),$(2)),$(1)-$(serial))
+$(if $(wildcard $(1)/build-info.txt), \
+  $(eval serial := $(shell awk -F '=' '$$1 == "SERIAL" { print $$2 }' "$(1)/build-info.txt")) \
+  $(eval $(1)-$(2)_SERIAL := $(serial)) \
+  $(1)-$(2)-$(serial) $(if $(filter $(DEFAULT_ARCH),$(2)),$(1)-$(serial)) \
+)
 endef
 
 # $(1): target arch, e.g. amd64
