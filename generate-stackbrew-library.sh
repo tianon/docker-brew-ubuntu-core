@@ -76,9 +76,13 @@ for task in "${tasks[@]}"; do
 	arch=$(echo $task | cut -d / -f 2)
 
 	commit="$(git log -1 --format='format:%H' -- "$version/$arch")"
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt")"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>&1 || true)"
+	[ "$serial" ] || continue
 	
 	versionAliases=()
+
+	[ -s "$version/alias" ] && versionAliases+=( $(< "$version/alias") )
+
 	if [ -z "${noVersion[$version]}" ]; then
 		tarball="$version/$arch/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
 		fullVersion="$(tar -xvf "$tarball" etc/debian_version --to-stdout 2>/dev/null)"
@@ -86,33 +90,23 @@ for task in "${tasks[@]}"; do
 			fullVersion="$(eval "$(tar -xvf "$tarball" etc/os-release --to-stdout 2>/dev/null)" && echo "$VERSION" | cut -d' ' -f1)"
 		fi
 		if [ "$fullVersion" ]; then
-			versionAliases+=( $fullVersion-$arch )
-			if [ "$arch" == "$systemArch" ]; then
-				versionAliases+=( $fullVersion )
-			fi
+			#versionAliases+=( $fullVersion )
 			if [ "${fullVersion%.*.*}" != "$fullVersion" ]; then
 				# three part version like "12.04.4"
-				versionAliases+=( ${fullVersion%.*}-$arch )
-				if [ "$arch" == "$systemArch" ]; then
-					versionAliases+=( ${fullVersion%.*} )
-				fi
+				#versionAliases+=( ${fullVersion%.*} )
+				versionAliases=( $fullVersion "${versionAliases[@]}" )
 			fi
 		fi
 	fi
-	versionAliases+=( $version-$arch-$serial $version-$arch )
-	if [ "$arch" == "$systemArch" ]; then
-		versionAliases+=( $version-$serial $version )
-	fi
-	if [ "x${aliases[$version]}" != "x" ]; then
-		versionAliases+=( ${aliases[$version]}-$arch )
-		if [ "$arch" == "$systemArch" ]; then
-			versionAliases+=( ${aliases[$version]} )
-		fi
-	fi
+	versionAliases+=( $version-$serial $version ${aliases[$version]} )
 	
 	echo
 	echo "# $serial"
 	for va in "${versionAliases[@]}"; do
 		echo "$va: ${url}@${commit} $version"
+		if [ "$arch" == "$systemArch" ]; then
+			va_arched=${va%%-*}-$arch$([ -n "${va#*-}" ] && echo -n "-${va#*-}")
+			echo "$va_arched: ${url}@${commit} $version"
+		fi
 	done
 done
