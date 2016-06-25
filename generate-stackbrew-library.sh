@@ -3,7 +3,7 @@ set -e
 
 declare -A aliases
 aliases=(
-	[trusty]='latest'
+	[$(< latest)]='latest'
 )
 declare -A noVersion
 noVersion=(

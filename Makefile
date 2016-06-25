@@ -9,7 +9,8 @@ endif
 DQUOTE := "
 # vim syntax highligh go crazy with a signal double quote above "
 
-LATEST := trusty
+LATEST := $(shell cat latest)
+
 BASE_URL := https://partner-images.canonical.com/core
 WGET_FILES := \
   MD5SUMS \
@@ -39,8 +40,11 @@ SUPPORTED_ARCH_PAIRS := \
   s390x-s390
 
 DOCKER ?= docker
-DOCKER_REPO := ubuntu
-DOCKER_USER := $(shell $(DOCKER) info | awk '/^Username:/ { print $$2 }')
+DOCKER_REPO := $(shell cat repo 2>/dev/null)
+$(if $(DOCKER_REPO),, \
+  $(eval DOCKER_USER := $(shell $(DOCKER) info | awk -F ': ' '$$1 == "Username" { print $$2; exit }')) \
+  $(eval DOCKER_REPO := $(if $(DOCKER_USER),$(DOCKER_USER)/)ubuntu) \
+)
 SHA256SUM ?= $(shell which sha256sum)
 
 ALL_TARGETS :=
@@ -229,8 +233,8 @@ endef
 
 define do-docker-build
 @echo "$@ <= docker building $(PRIVATE_PATH)";
-$(hide) if [ -n "$(FORCE)" -o -z "$$($(DOCKER) inspect $(DOCKER_USER)/$(DOCKER_REPO):$(PRIVATE_TARGET) 2>/dev/null | grep Created)" ]; then \
-  $(DOCKER) build -t $(DOCKER_USER)/$(DOCKER_REPO):$(PRIVATE_TARGET) $(PRIVATE_PATH); \
+$(hide) if [ -n "$(FORCE)" -o -z "$$($(DOCKER) inspect $(DOCKER_REPO):$(PRIVATE_TARGET) 2>/dev/null | grep Created)" ]; then \
+  $(DOCKER) build -t $(DOCKER_REPO):$(PRIVATE_TARGET) $(PRIVATE_PATH); \
 fi
 
 endef
@@ -256,7 +260,7 @@ define do-docker-tag
 $(hide) if [ -n "$(PRIVATE_TAGS)" ]; then \
   echo "$@ <= docker tagging $(PRIVATE_PATH)"; \
   for tag in $(PRIVATE_TAGS); do \
-    $(DOCKER) tag -f $(DOCKER_USER)/$(DOCKER_REPO):$(PRIVATE_TARGET) $(DOCKER_USER)/$(DOCKER_REPO):$${tag}; \
+    $(DOCKER) tag -f $(DOCKER_REPO):$(PRIVATE_TARGET) $(DOCKER_REPO):$${tag}; \
   done; \
 fi
 
@@ -297,7 +301,7 @@ $(call define-docker-target,$(1),$(call target-name-from-path,$(1)),$(call suite
 endef
 
 all:
-	@echo "Build $(DOCKER_USER)/$(DOCKER_REPO) done"; \
+	@echo "Build $(DOCKER_REPO) done"; \
 	echo "Update tarballs"; \
 	echo ; \
 	$(foreach t,$(ALL_TARGETS),echo '- `$(DOCKER_REPO):$(t)`: $($(t)_SERIAL)';)
