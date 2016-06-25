@@ -76,7 +76,7 @@ for task in "${tasks[@]}"; do
 	arch=$(echo $task | cut -d / -f 2)
 
 	commit="$(git log -1 --format='format:%H' -- "$version/$arch")"
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2 }' "$version/build-info.txt")"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt")"
 	
 	versionAliases=()
 	if [ -z "${noVersion[$version]}" ]; then

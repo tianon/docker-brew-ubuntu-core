@@ -104,7 +104,7 @@ $(if $(fullver), \
 ) \
 \
 $(if $(wildcard $(1)/build-info.txt), \
-  $(eval serial := $(shell awk -F '=' '$$1 == "SERIAL" { print $$2 }' "$(1)/build-info.txt")) \
+  $(eval serial := $(shell awk -F '=' '$$1 == "SERIAL" { print $$2; exit }' "$(1)/build-info.txt")) \
   $(eval $(1)-$(2)_SERIAL := $(serial)) \
   $(1)-$(2)-$(serial) $(if $(filter $(DEFAULT_ARCH),$(2)),$(1)-$(serial)) \
 )
