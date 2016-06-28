@@ -5,7 +5,9 @@ ADD ubuntu-wily-core-cloudimg-amd64-root.tar.gz /
 
 # a few minor docker-specific tweaks
 # see https://github.com/docker/docker/blob/master/contrib/mkimage/debootstrap
-RUN echo '#!/bin/sh' > /usr/sbin/policy-rc.d \
+RUN set -xe \
+	\
+	&& echo '#!/bin/sh' > /usr/sbin/policy-rc.d \
 	&& echo 'exit 101' >> /usr/sbin/policy-rc.d \
 	&& chmod +x /usr/sbin/policy-rc.d \
 	\
@@ -22,6 +24,10 @@ RUN echo '#!/bin/sh' > /usr/sbin/policy-rc.d \
 	&& echo 'Acquire::Languages "none";' > /etc/apt/apt.conf.d/docker-no-languages \
 	\
 	&& echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/docker-gzip-indexes
+
+# delete all the apt list files since they're big and get stale quickly
+RUN rm -rf /var/lib/apt/lists/*
+# this forces "apt-get update" in dependent images, which is also good
 
 # enable the universe
 RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
