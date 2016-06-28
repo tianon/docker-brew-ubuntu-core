@@ -1,3 +1,19 @@
+ifeq ($(TMPDIR),)
+%: PRIVATE_MAKESELF := $(shell pwd)/$(word $(words $(MAKEFILE_LIST)),$(MAKEFILE_LIST))
+%:
+	@TMPDIR=$$(mktemp --tmpdir -d); \
+	trap 'rm -rf "$$TMPDIR"' EXIT; \
+	$(MAKE) -f $(PRIVATE_MAKESELF) --no-print-directory TMPDIR=$$TMPDIR $@
+
+else
+
+.PHONY: all
+all:
+	@echo "Build $(DOCKER_REPO) done"; \
+	echo "Update tarballs"; \
+	echo ; \
+	$(foreach t,$(ALL_TARGETS),echo '- `$(DOCKER_REPO):$(t)`: $($(t)_SERIAL)';)
+
 SHELL := /bin/bash
 
 ifneq ($(strip $(V)),)
@@ -45,7 +61,16 @@ $(if $(DOCKER_REPO),, \
   $(eval DOCKER_USER := $(shell $(DOCKER) info | awk -F ': ' '$$1 == "Username" { print $$2; exit }')) \
   $(eval DOCKER_REPO := $(if $(DOCKER_USER),$(DOCKER_USER)/)ubuntu) \
 )
-SHA256SUM ?= $(shell which sha256sum)
+
+GPG_FINGERPRINT := $(strip $(shell grep -v '^\#' gpg-fingerprint 2>/dev/null || true))
+ifneq ($(GPG_FINGERPRINT),)
+GNUPGHOME := $(TMPDIR)/gpghome
+$(GNUPGHOME):
+	@mkdir -p $@
+	@chmod 700 $@
+	$(hide) GNUPGHOME="$(GNUPGHOME)" gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$(GPG_FINGERPRINT)"
+
+endif
 
 ALL_TARGETS :=
 
@@ -74,11 +99,6 @@ endef
 # $(2): arch name, e.g. amd64
 define roottar-filename
 $(call roottar-prefix,$(1),$(2))-root.tar.gz
-endef
-
-# $(1): relative directory path, e.g. "jessie/amd64", "jessie/amd64/scm"
-define enumerate-build-dep-for-docker-build
-$(foreach wf,$(WGET_FILES))
 endef
 
 # $(1): suite name, e.g. jessie
@@ -177,22 +197,37 @@ $(dockerfile): Dockerfile.template
 endef
 
 define do-check-roottar
-$(hide) sha256sum="$$($(SHA256SUM) "$(PRIVATE_ROOTTAR)" | cut -d' ' -f1)"; \
-if ! grep -q "$$sha256sum" "$(PRIVATE_SHA256SUMS)"; then \
-  echo >&2 "error: '$(PRIVATE_ROOTTAR)' has invalid SHA256"; \
-  exit 1; \
-fi
+$(hide) for sums in sha256 sha1 md5; do \
+  sumsFile="$(PRIVATE_SUITE)/$${sums^^}SUMS"; \
+  sumCmd="$${sums}sum"; \
+  if [ -f "$$sumsFile" ]; then \
+    if [ -n "$(GPG_FINGERPRINT)" ]; then \
+      if [ ! -f "$$sumsFile.gpg" ]; then \
+        echo >&2 "warning: '$$sumsFile.gpg' appears to be missing!"; \
+        badness=1; \
+      else \
+        GNUPGHOME="$(GNUPGHOME)" gpg --batch --verify "$$sumsFile.gpg" "$$sumsFile"; \
+      fi; \
+    fi; \
+    grep " *$(notdir $(PRIVATE_ROOTTAR))\$$" "$$sumsFile" | ( cd "$(dir $(PRIVATE_ROOTTAR))" && "$$sumCmd" -c - ); \
+  else \
+    echo >&2 "warning: missing '$$sumsFile'!"; \
+    badness=1; \
+  fi; \
+done; \
+[ -z "$$badness" ] || false
 
 endef
 
 # $(1): target name, e.g. jessie-amd64-scm
-# $(2): suite name, e.g. jessie/SHA256SUMS
+# $(2): suite name, e.g. jessie
 # $(3): roottar path, e.g. precise/i386/ubuntu-precise-core-cloudimg-i386-root.tar.gz
+# $(4): additional deps
 define define-check-roottar-target
 .PHONY: check-roottar-$(1)
-check-roottar-$(1): PRIVATE_SHA256SUMS := $(2)
+check-roottar-$(1): PRIVATE_SUITE := $(2)
 check-roottar-$(1): PRIVATE_ROOTTAR := $(3)
-check-roottar-$(1): $(2) $(3)
+check-roottar-$(1): $(GNUPGHOME) $(3) $(4)
 	$$(call do-check-roottar)
 
 downloads: check-roottar-$(1)
@@ -228,7 +263,7 @@ $(eval roottarbase := $(call roottar-prefix,$(3),$(4)))
 $(eval roottar := $(call roottar-filename,$(3),$(4)))
 $(call define-wget-target,$(1)/$(roottar),$(suitedurl)/$(roottar))
 $(call define-wget-target,$(1)/$(roottarbase).manifest,$(suitedurl)/$(roottarbase).manifest)
-$(call define-check-roottar-target,$(2),$(3)/SHA256SUMS,$(1)/$(roottar))
+$(call define-check-roottar-target,$(2),$(3),$(1)/$(roottar),$(foreach wf,$(WGET_FILES),$(3)/$(notdir $(wf))) $(1)/$(roottarbase).manifest)
 endef
 
 define do-docker-build
@@ -300,13 +335,9 @@ define define-target-from-path
 $(call define-docker-target,$(1),$(call target-name-from-path,$(1)),$(call suite-name-from-path,$(1)),$(call arch-name-from-path,$(1)))
 endef
 
-all:
-	@echo "Build $(DOCKER_REPO) done"; \
-	echo "Update tarballs"; \
-	echo ; \
-	$(foreach t,$(ALL_TARGETS),echo '- `$(DOCKER_REPO):$(t)`: $($(t)_SERIAL)';)
-
 $(foreach f,$(shell find . -type f -name Dockerfile | cut -d/ -f2-), \
   $(eval path := $(patsubst %/Dockerfile,%,$(f))) \
   $(eval $(call define-target-from-path,$(path))) \
 )
+
+endif # End of TMPDIR
