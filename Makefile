@@ -295,7 +295,7 @@ define do-docker-tag
 $(hide) if [ -n "$(PRIVATE_TAGS)" ]; then \
   echo "$@ <= docker tagging $(PRIVATE_PATH)"; \
   for tag in $(PRIVATE_TAGS); do \
-    $(DOCKER) tag -f $(DOCKER_REPO):$(PRIVATE_TARGET) $(DOCKER_REPO):$${tag}; \
+    $(DOCKER) tag $(DOCKER_REPO):$(PRIVATE_TARGET) $(DOCKER_REPO):$${tag}; \
   done; \
 fi
 
