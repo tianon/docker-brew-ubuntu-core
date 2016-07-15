@@ -11,6 +11,11 @@ declare -A noVersion
 noVersion=(
 )
 
+develSuite="$(wget -qO- http://archive.ubuntu.com/ubuntu/dists/devel/Release | awk -F ': ' '$1 == "Codename" { print $2; exit }' || true)"
+if [ "$develSuite" ]; then
+	aliases[$develSuite]+=' devel'
+fi
+
 versions=( */ )
 versions=( "${versions[@]%/}" )
 
