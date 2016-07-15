@@ -45,7 +45,7 @@ for version in "${versions[@]}"; do
 	tarball="$version/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
 	commit="$(git log -1 --format='format:%H' -- "$version")"
 
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>&1 || true)"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>/dev/null || true)"
 	[ "$serial" ] || continue
 
 	versionAliases=()
