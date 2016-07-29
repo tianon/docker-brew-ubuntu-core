@@ -11,6 +11,11 @@ declare -A noVersion
 noVersion=(
 )
 
+develSuite="$(wget -qO- http://archive.ubuntu.com/ubuntu/dists/devel/Release | awk -F ': ' '$1 == "Codename" { print $2; exit }' || true)"
+if [ "$develSuite" ]; then
+	aliases[$develSuite]+=' devel'
+fi
+
 get_part() {
 	local dir="$1"
 	shift
@@ -86,15 +91,12 @@ for task in "${tasks[@]}"; do
 	tarball="$version/$arch/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
 	commit="$(git log -1 --format='format:%H' -- "$version/$arch")"
 
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>&1 || true)"
+	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>/dev/null || true)"
 	[ "$serial" ] || continue
 
 	versionAliases=()
 
-	if [ -s "$version/alias" ]; then
-		versionAliases+=( $(< "$version/alias")-$arch )
-		[ "$arch" == "$systemArch" ] && versionAliases+=( $(< "$version/alias") )
-	fi
+	[ -s "$version/alias" ] && versionAliases+=( $(< "$version/alias") )
 
 	if [ -z "${noVersion[$version]}" ]; then
 		fullVersion="$(git show "$commit:$tarball" | tar -xvz etc/debian_version --to-stdout 2>/dev/null || true)"
@@ -106,15 +108,20 @@ for task in "${tasks[@]}"; do
 			if [ "${fullVersion%.*.*}" != "$fullVersion" ]; then
 				# three part version like "12.04.4"
 				#versionAliases+=( ${fullVersion%.*} )
-				versionAliases=( $fullVersion-$arch "${versionAliases[@]}" )
-				[ "$arch" == "$systemArch" ] && versionAliases=( $fullVersion "${versionAliases[@]}" )
+				versionAliases=( $fullVersion "${versionAliases[@]}" )
 			fi
 		fi
 	fi
-	versionAliases+=( $version-$arch-$serial $version-$arch )
-	[ "$arch" == "$systemArch" ] && versionAliases+=( $version-$serial $version )
-	if [ -n "${aliases[$version]}" ]; then
-		versionAliases+=( ${aliases[$version]}-$arch ${aliases[$version]} )
+	versionAliases+=( $version-$serial $version ${aliases[$version]} )
+
+	archedVersionAliases=()
+	for a in ${versionAliases[@]}; do
+		archedVersionAliases+=( $(echo $a | sed 's,^\([^-]\+\)-,\1-'$arch'-,; s,^\([^-]\+\)$,\1-'$arch',') )
+	done
+	if [ "$arch" == "$systemArch" ]; then
+		versionAliases+=( ${archedVersionAliases[@]} )
+	else
+		versionAliases=( ${archedVersionAliases[@]} )
 	fi
 
 	echo
