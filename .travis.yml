@@ -1,0 +1,67 @@
+dist: trusty
+sudo: required
+services:
+- docker
+
+env:
+  global:
+  - DOCKER_REPO=ubuntu
+  - secure: "bOgR8kDqTnpp5i46v4+W9vSNwAjATGi+ddmR1XgsakeoNUXLfje8kJ+b6ls0KoMFSSh3tni4GzMavh7yJT1UmIqEOSlH2IjKn5TmF+dGuDRTfwLT4sbzmdq0jWCWaiqZdKRjOUSuG4Z0iyF7sIP5KHZLBTte5zcxeqy5RGgZLKw="
+  matrix:
+  - VARIANT=precise-amd64
+  - VARIANT=precise-armhf
+  - VARIANT=precise-i386
+  - VARIANT=trusty-amd64
+  - VARIANT=trusty-arm64
+  - VARIANT=trusty-armhf
+  - VARIANT=trusty-i386
+  - VARIANT=trusty-ppc64el
+  - VARIANT=xenial-amd64
+  - VARIANT=xenial-arm64
+  - VARIANT=xenial-armhf
+  - VARIANT=xenial-i386
+  - VARIANT=xenial-ppc64el
+  - VARIANT=xenial-s390x
+  - VARIANT=yakkety-amd64
+  - VARIANT=yakkety-arm64
+  - VARIANT=yakkety-armhf
+  - VARIANT=yakkety-i386
+  - VARIANT=yakkety-ppc64el
+  - VARIANT=yakkety-s390x
+  - VARIANT=zesty-amd64
+  - VARIANT=zesty-arm64
+  - VARIANT=zesty-armhf
+  - VARIANT=zesty-i386
+  - VARIANT=zesty-ppc64el
+  - VARIANT=zesty-s390x
+
+matrix:
+  fast_finish: true
+  allow_failures:
+  - env: VARIANT=xenial-s390x
+  - env: VARIANT=yakkety-s390x
+  - env: VARIANT=zesty-s390x
+
+branches:
+  only:
+  - master
+
+addons:
+  apt:
+    sources:
+    - sourceline: 'deb http://archive.ubuntu.com/ubuntu/ devel main universe'
+    packages:
+    - binfmt-support
+    - qemu-user-static
+
+script:
+- make V=1 DOCKER_USER=${DOCKER_USER} DOCKER_REPO=${DOCKER_REPO} -j $(nproc) $VARIANT
+- docker images | grep ^${DOCKER_USER}/${DOCKER_REPO} | awk '{print $1 ":" $2}'
+
+after_success:
+- if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
+    docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}";
+    for image in $(docker images | grep ^${DOCKER_USER}/${DOCKER_REPO} | awk '{print $1 ":" $2}'); do
+      docker push $image;
+    done
+  fi
