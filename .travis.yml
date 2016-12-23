@@ -6,7 +6,7 @@ services:
 env:
   global:
   - DOCKER_REPO=ubuntu
-  - secure: "bOgR8kDqTnpp5i46v4+W9vSNwAjATGi+ddmR1XgsakeoNUXLfje8kJ+b6ls0KoMFSSh3tni4GzMavh7yJT1UmIqEOSlH2IjKn5TmF+dGuDRTfwLT4sbzmdq0jWCWaiqZdKRjOUSuG4Z0iyF7sIP5KHZLBTte5zcxeqy5RGgZLKw="
+  - secure: "BTSuC+Y0IspLOl+CRUwgy8g4DsavDdyF9GOD97YkKy7hkHWF+tR8N3W5wgPMpO2JXhKBY8nmj1p32AlMFu42oGtfZEl25yRBhEkHf8pjB7hdSYs51GFcwblI+jjm4hUAkkAHcbpl6GtG/1JkXqhDl59NykKsYtXAPuAbsP/9uEk="
   matrix:
   - VARIANT=precise-amd64
   - VARIANT=precise-armhf
