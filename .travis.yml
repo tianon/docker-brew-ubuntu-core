@@ -55,6 +55,7 @@ addons:
     - qemu-user-static
 
 script:
+- echo "${DOCKER_USER}/${DOCKER_REPO}" > repo
 - make V=1 -j $(nproc) $VARIANT
 - docker images | grep ^${DOCKER_USER}/${DOCKER_REPO} | awk '{print $1 ":" $2}'
 
