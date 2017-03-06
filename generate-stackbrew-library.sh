@@ -3,13 +3,14 @@ set -e
 
 cd "$(dirname "$(readlink -f "$BASH_SOURCE")")"
 
-declare -A aliases
-aliases=(
-	[$(< latest)]='latest'
-	[$(< rolling)]='rolling' # https://github.com/docker-library/official-images/issues/2323#issuecomment-284409446
+declare -A aliases=(
+	#[suite]='tag1 tag2 ...'
 )
-declare -A noVersion
-noVersion=(
+aliases[$(< latest)]+=' latest'
+aliases[$(< rolling)]+=' rolling' # https://github.com/docker-library/official-images/issues/2323#issuecomment-284409446
+
+declare -A noVersion=(
+	#[suite]=1
 )
 
 develSuite="$(wget -qO- http://archive.ubuntu.com/ubuntu/dists/devel/Release | awk -F ': ' '$1 == "Codename" { print $2; exit }' || true)"
