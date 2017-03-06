@@ -6,6 +6,7 @@ cd "$(dirname "$(readlink -f "$BASH_SOURCE")")"
 declare -A aliases
 aliases=(
 	[$(< latest)]='latest'
+	[$(< rolling)]='rolling' # https://github.com/docker-library/official-images/issues/2323#issuecomment-284409446
 )
 declare -A noVersion
 noVersion=(
