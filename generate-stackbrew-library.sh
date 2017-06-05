@@ -22,7 +22,7 @@ versions=( */ )
 versions=( "${versions[@]%/}" )
 
 cat <<-EOH
-# Maintained by Tianon as proxy for upstream's offical builds.
+# Maintained by Tianon as proxy for upstream's official builds.
 
 Maintainers: Tianon Gravi <tianon@debian.org> (@tianon)
 GitRepo: https://github.com/tianon/docker-brew-ubuntu-core.git
