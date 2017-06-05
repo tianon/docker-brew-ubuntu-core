@@ -13,10 +13,27 @@ declare -A noVersion=(
 	#[suite]=1
 )
 
-develSuite="$(wget -qO- http://archive.ubuntu.com/ubuntu/dists/devel/Release | awk -F ': ' '$1 == "Codename" { print $2; exit }' || true)"
+develSuite="$(
+	wget -qO- http://archive.ubuntu.com/ubuntu/dists/devel/Release \
+		| awk -F ': ' '$1 == "Codename" { print $2; exit }' \
+		|| true
+)"
 if [ "$develSuite" ]; then
 	aliases[$develSuite]+=' devel'
 fi
+
+archMaps=( $(
+	git ls-remote --heads https://github.com/tianon/docker-brew-ubuntu-core.git \
+		| awk -F '[\t/]' '$4 ~ /^dist-/ { gsub(/^dist-/, "", $4); print $4 "=" $1 }'
+) )
+arches=()
+declare -A archCommits=()
+for archMap in "${archMaps[@]}"; do
+	arch="${archMap%%=*}"
+	commit="${archMap#${arch}=}"
+	arches+=( "$arch" )
+	archCommits[$arch]="$commit"
+done
 
 versions=( */ )
 versions=( "${versions[@]%/}" )
@@ -24,21 +41,20 @@ versions=( "${versions[@]%/}" )
 cat <<-EOH
 # Maintained by Tianon as proxy for upstream's official builds.
 
-Maintainers: Tianon Gravi <tianon@debian.org> (@tianon)
-GitRepo: https://github.com/tianon/docker-brew-ubuntu-core.git
-GitFetch: refs/heads/dist
-
 # see https://partner-images.canonical.com/core/
 # see also https://wiki.ubuntu.com/Releases#Current
-EOH
 
-commitRange='master..dist'
-commitCount="$(git rev-list "$commitRange" --count 2>/dev/null || true)"
-if [ "$commitCount" ] && [ "$commitCount" -gt 0 ]; then
-	echo
-	echo '# commits:' "($commitRange)"
-	git log --format=format:'- %h %s%n%w(0,2,2)%b' "$commitRange" | sed 's/^/#  /'
-fi
+Maintainers: Tianon Gravi <tianon@debian.org> (@tianon)
+GitRepo: https://github.com/tianon/docker-brew-ubuntu-core.git
+GitCommit: $(git log --format='format:%H' -1)
+EOH
+for arch in "${arches[@]}"; do
+	cat <<-EOA
+		# https://github.com/tianon/docker-brew-ubuntu-core/tree/dist-${arch}
+		${arch}-GitFetch: refs/heads/dist-${arch}
+		${arch}-GitCommit: ${archCommits[$arch]}
+	EOA
+done
 
 # prints "$2$1$3$1...$N"
 join() {
@@ -47,39 +63,35 @@ join() {
 	echo "${out#$sep}"
 }
 
-arch="$(dpkg --print-architecture)"
 for version in "${versions[@]}"; do
-	tarball="$version/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
-	commit="$(git log -1 --format='format:%H' -- "$version")"
-
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>/dev/null || true)"
-	[ "$serial" ] || continue
+	# TODO serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>/dev/null || true)"
+	# [ "$serial" ] || continue
 
 	versionAliases=()
 
 	[ -s "$version/alias" ] && versionAliases+=( $(< "$version/alias") )
 
-	if [ -z "${noVersion[$version]}" ]; then
-		fullVersion="$(git show "$commit:$tarball" | tar -xvz etc/debian_version --to-stdout 2>/dev/null || true)"
-		if [ -z "$fullVersion" ] || [[ "$fullVersion" == */sid ]]; then
-			fullVersion="$(eval "$(git show "$commit:$tarball" | tar -xvz etc/os-release --to-stdout 2>/dev/null || true)" && echo "$VERSION" | cut -d' ' -f1)"
+	# TODO versionAliases+=( $version-$serial )
+
+	versionAliases+=(
+		$version
+		${aliases[$version]}
+	)
+
+	versionArches=()
+	for arch in "${arches[@]}"; do
+		if wget --quiet --spider "https://github.com/tianon/docker-brew-ubuntu-core/raw/${archCommits[$arch]}/${version}/Dockerfile"; then
+			versionArches+=( "$arch" )
 		fi
-		if [ "$fullVersion" ]; then
-			#versionAliases+=( $fullVersion )
-			if [ "${fullVersion%.*.*}" != "$fullVersion" ]; then
-				# three part version like "12.04.4"
-				#versionAliases+=( ${fullVersion%.*} )
-				versionAliases=( $fullVersion "${versionAliases[@]}" )
-			fi
-		fi
-	fi
-	versionAliases+=( $version-$serial $version ${aliases[$version]} )
+	done
+
+	# assert some amount of sanity
+	[ "${#versionArches[@]}" -gt 0 ]
 
 	echo
 	cat <<-EOE
-		# $serial
 		Tags: $(join ', ' "${versionAliases[@]}")
-		GitCommit: $commit
+		Architectures: $(join ', ' "${versionArches[@]}")
 		Directory: $version
 	EOE
 done
