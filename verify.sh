@@ -1,5 +1,5 @@
 #!/bin/bash
-set -eo pipefail
+set -Eeuo pipefail
 
 cd "$(dirname "$BASH_SOURCE")"
 
@@ -21,8 +21,10 @@ else
 	gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$gpgFingerprint"
 fi
 
+hostArch="$(dpkg --print-architecture)"
 arch="$(cat arch 2>/dev/null || true)"
-: ${arch:=$(dpkg --print-architecture)}
+: ${arch:=$hostArch}
+
 for v in "${versions[@]}"; do
 	thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 	thisTar="$thisTarBase-root.tar.gz"

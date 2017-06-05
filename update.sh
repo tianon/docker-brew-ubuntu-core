@@ -1,5 +1,5 @@
 #!/bin/bash
-set -e
+set -Eeuo pipefail
 
 cd "$(dirname "$BASH_SOURCE")"
 
@@ -9,8 +9,10 @@ if [ ${#versions[@]} -eq 0 ]; then
 fi
 versions=( "${versions[@]%/}" )
 
+hostArch="$(dpkg --print-architecture)"
 arch="$(cat arch 2>/dev/null || true)"
-: ${arch:=$(dpkg --print-architecture)}
+: ${arch:=$hostArch}
+
 toVerify=()
 for v in "${versions[@]}"; do
 	thisTarBase="ubuntu-$v-core-cloudimg-$arch"
@@ -40,18 +42,18 @@ for v in "${versions[@]}"; do
 		baseUrl+="/$current"
 		echo "SERIAL=$current" > "$v/build-info.txt" # this will be overwritten momentarily if this directory has one
 	fi
-	
+
 	(
 		cd "$v"
 		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'} || true
 		wget -N "$baseUrl/$thisTar"
 	)
-	
+
 	cat > "$v/Dockerfile" <<EOF
 FROM scratch
 ADD $thisTar /
 EOF
-	
+
 	cat >> "$v/Dockerfile" <<'EOF'
 
 # a few minor docker-specific tweaks
@@ -99,34 +101,36 @@ RUN mkdir -p /run/systemd && echo 'docker' > /run/systemd/container
 # overwrite this with 'CMD []' in a dependent Dockerfile
 CMD ["/bin/bash"]
 EOF
-	
+
 	toVerify+=( "$v" )
 done
 
 ( set -x; ./verify.sh "${toVerify[@]}" )
 
-repo="$(cat repo 2>/dev/null || true)"
-if [ -z "$repo" ]; then
-	user="$(docker info | awk -F ': ' '$1 == "Username" { print $2; exit }')"
-	repo="${user:+$user/}ubuntu-core"
+if [ "$arch" = "$hostArch" ]; then
+	repo="$(cat repo 2>/dev/null || true)"
+	if [ -z "$repo" ]; then
+		user="$(docker info | awk -F ': ' '$1 == "Username" { print $2; exit }')"
+		repo="${user:+$user/}ubuntu-core"
+	fi
+	latest="$(< latest)"
+	for v in "${versions[@]}"; do
+		if [ ! -f "$v/Dockerfile" ]; then
+			echo >&2 "warning: $v/Dockerfile does not exist; skipping $v"
+			continue
+		fi
+		( set -x; docker build -t "$repo:$v" "$v" )
+		serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt")"
+		if [ "$serial" ]; then
+			( set -x; docker tag "$repo:$v" "$repo:$v-$serial" )
+		fi
+		if [ -s "$v/alias" ]; then
+			for a in $(< "$v/alias"); do
+				( set -x; docker tag "$repo:$v" "$repo:$a" )
+			done
+		fi
+		if [ "$v" = "$latest" ]; then
+			( set -x; docker tag "$repo:$v" "$repo:latest" )
+		fi
+	done
 fi
-latest="$(< latest)"
-for v in "${versions[@]}"; do
-	if [ ! -f "$v/Dockerfile" ]; then
-		echo >&2 "warning: $v/Dockerfile does not exist; skipping $v"
-		continue
-	fi
-	( set -x; docker build -t "$repo:$v" "$v" )
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt")"
-	if [ "$serial" ]; then
-		( set -x; docker tag "$repo:$v" "$repo:$v-$serial" )
-	fi
-	if [ -s "$v/alias" ]; then
-		for a in $(< "$v/alias"); do
-			( set -x; docker tag "$repo:$v" "$repo:$a" )
-		done
-	fi
-	if [ "$v" = "$latest" ]; then
-		( set -x; docker tag "$repo:$v" "$repo:latest" )
-	fi
-done
