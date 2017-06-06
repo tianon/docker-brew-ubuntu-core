@@ -67,29 +67,37 @@ for version in "${versions[@]}"; do
 	# TODO serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>/dev/null || true)"
 	# [ "$serial" ] || continue
 
+	versionArches=()
+	versionSerial=
+	for arch in "${arches[@]}"; do
+		if buildInfo="$(wget -qO- "https://github.com/tianon/docker-brew-ubuntu-core/raw/${archCommits[$arch]}/${version}/build-info.txt")"; then
+			versionArches+=( "$arch" )
+			archSerial="$(echo "$buildInfo" | awk -F '=' '$1 == "SERIAL" { print $2; exit }')"
+			if [ ! -z "$versionSerial" ] && [ "$versionSerial" != "$archSerial" ]; then
+				echo >&2 "error: inconsistent serials for '$version'! ('$versionSerial' vs '$archSerial' in '$arch')"
+				exit 1
+			fi
+			versionSerial="$archSerial"
+		fi
+	done
+
 	versionAliases=()
 
 	[ -s "$version/alias" ] && versionAliases+=( $(< "$version/alias") )
 
-	# TODO versionAliases+=( $version-$serial )
+	versionAliases+=( $version-$versionSerial )
 
 	versionAliases+=(
 		$version
 		${aliases[$version]}
 	)
 
-	versionArches=()
-	for arch in "${arches[@]}"; do
-		if wget --quiet --spider "https://github.com/tianon/docker-brew-ubuntu-core/raw/${archCommits[$arch]}/${version}/Dockerfile"; then
-			versionArches+=( "$arch" )
-		fi
-	done
-
 	# assert some amount of sanity
 	[ "${#versionArches[@]}" -gt 0 ]
 
 	echo
 	cat <<-EOE
+		# $versionSerial ($version)
 		Tags: $(join ', ' "${versionAliases[@]}")
 		Architectures: $(join ', ' "${versionArches[@]}")
 		Directory: $version
