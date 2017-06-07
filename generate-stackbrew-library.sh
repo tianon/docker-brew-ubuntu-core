@@ -24,7 +24,8 @@ fi
 
 archMaps=( $(
 	git ls-remote --heads https://github.com/tianon/docker-brew-ubuntu-core.git \
-		| awk -F '[\t/]' '$4 ~ /^dist-/ { gsub(/^dist-/, "", $4); print $4 "=" $1 }'
+		| awk -F '[\t/]' '$4 ~ /^dist-/ { gsub(/^dist-/, "", $4); print $4 "=" $1 }' \
+		| sort
 ) )
 arches=()
 declare -A archCommits=()
