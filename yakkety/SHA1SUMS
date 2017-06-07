@@ -1,0 +1,6 @@
+48e1a8dcdc4b8ccfdec4fdcfbefd65603df46c52 *ubuntu-yakkety-core-cloudimg-amd64-root.tar.gz
+b79e40775a450e8d1eabaa988f3fe18006241490 *ubuntu-yakkety-core-cloudimg-arm64-root.tar.gz
+79010f85294e21e3b244652ecedde1ffab69963a *ubuntu-yakkety-core-cloudimg-armhf-root.tar.gz
+230d90f354e1fb43dd289da3ecb8b0ea101d76be *ubuntu-yakkety-core-cloudimg-i386-root.tar.gz
+18bc86a7f15fd174082bf2c924ea2f73df829ee6 *ubuntu-yakkety-core-cloudimg-ppc64el-root.tar.gz
+95cfce5daf96edf28cc00c7ee93c1cfd84ccb1ae *ubuntu-yakkety-core-cloudimg-s390x-root.tar.gz
