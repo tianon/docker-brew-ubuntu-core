@@ -68,7 +68,7 @@ for version in "${versions[@]}"; do
 	versionArches=()
 	versionSerial=
 	for arch in "${arches[@]}"; do
-		if buildInfo="$(wget -qO- "https://cdn.rawgit.com/tianon/docker-brew-ubuntu-core/${archCommits[$arch]}/${version}/build-info.txt")"; then
+		if buildInfo="$(wget -qO- "https://raw.githubusercontent.com/tianon/docker-brew-ubuntu-core/${archCommits[$arch]}/${version}/build-info.txt")"; then
 			versionArches+=( "$arch" )
 			archSerial="$(echo "$buildInfo" | awk -F '=' '$1 == "SERIAL" { print $2; exit }')"
 			if [ ! -z "$versionSerial" ] && [ "$versionSerial" != "$archSerial" ]; then
