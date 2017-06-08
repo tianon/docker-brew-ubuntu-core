@@ -65,9 +65,6 @@ join() {
 }
 
 for version in "${versions[@]}"; do
-	# TODO serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>/dev/null || true)"
-	# [ "$serial" ] || continue
-
 	versionArches=()
 	versionSerial=
 	for arch in "${arches[@]}"; do
