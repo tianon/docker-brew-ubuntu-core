@@ -26,6 +26,7 @@ DQUOTE := "
 # vim syntax highligh go crazy with a signal double quote above "
 
 LATEST := $(shell cat latest)
+ROLLING := $(shell cat rolling)
 
 BASE_URL := https://partner-images.canonical.com/core
 WGET_FILES := \
@@ -109,6 +110,7 @@ endef
 define enumerate-additional-tags-for
 $(if $(filter $(DEFAULT_ARCH),$(2)),$(1)) \
 $(if $(filter $(LATEST),$(1)),latest-$(2) $(if $(filter $(DEFAULT_ARCH),$(2)),latest)) \
+$(if $(filter $(ROLLING),$(1)),rolling-$(2) $(if $(filter $(DEFAULT_ARCH),$(2)),rolling)) \
 \
 $(eval roottar := $(1)/$(2)/$(call roottar-filename,$(1),$(2))) \
 $(if $(wildcard $(roottar)), \
