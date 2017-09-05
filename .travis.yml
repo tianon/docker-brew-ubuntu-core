@@ -45,13 +45,9 @@ branches:
   only:
   - master
 
-addons:
-  apt:
-    sources:
-    - sourceline: 'deb http://archive.ubuntu.com/ubuntu/ devel main universe'
-    packages:
-    - binfmt-support
-    - qemu-user-static
+before_install:
+- docker run --rm --privileged vicamo/binfmt-qemu:latest
+- cat /proc/sys/fs/binfmt_misc/qemu-*
 
 script:
 - echo "${DOCKER_USER}/${DOCKER_REPO}" > repo

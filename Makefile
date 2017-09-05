@@ -39,22 +39,29 @@ WGET_FILES := \
   unpacked/build-info.txt
 
 DEFAULT_ARCH := amd64
-HOST_ARCH := $(shell dpkg --print-architecture)
-SUPPORTED_ARCH_PAIRS := \
-  amd64-i386 \
-  arm-armel \
-  armel-arm \
-  arm-armhf \
-  armhf-arm \
-  armel-armhf \
-  armhf-armel \
-  i386-amd64 \
-  powerpc-ppc64 \
-  ppc64-powerpc \
-  sparc-sparc64 \
-  sparc64-sparc \
-  s390-s390x \
-  s390x-s390
+QEMU_NATIVE_ARCHS := amd64-i386 arm-armel armel-arm arm-armhf armhf-arm armel-armhf armhf-armel i386-amd64 powerpc-ppc64 ppc64-powerpc sparc-sparc64 sparc64-sparc s390-s390x s390x-s390
+$(foreach arch,alpha arm armeb i386 m68k mips mipsel mips64el ppc64 sh4 sh4eb sparc sparc64 s390x,$(eval QEMU_ARCH_$(arch) := $(arch)))
+QEMU_ARCH_amd64 := x86_64
+QEMU_ARCH_armel := arm
+QEMU_ARCH_armhf := arm
+QEMU_ARCH_arm64 := aarch64
+QEMU_ARCH_lpia := i386
+QEMU_ARCH_powerpc := ppc
+QEMU_ARCH_powerpcspe := ppc
+QEMU_ARCH_ppc64el := ppc64le
+QEMU_SUITE_trusty := zesty
+QEMU_SUITE_xenial := zesty
+
+# $(1): suite
+define get-qemu-suite
+$(if $(QEMU_SUITE_$(1)),$(QEMU_SUITE_$(1)),$(1))
+endef
+
+# $(1): system dpkg arch
+# $(2): target dpkg arch
+define get-qemu-arch
+$(if $(filter $(1)-$(2),$(1)-$(1) $(QEMU_NATIVE_ARCHS)),,$(QEMU_ARCH_$(2)))
+endef
 
 DOCKER ?= docker
 DOCKER_REPO := $(shell cat repo 2>/dev/null)
@@ -135,42 +142,37 @@ $(if $(wildcard $(1)/build-info.txt), \
 )
 endef
 
-# $(1): target arch, e.g. amd64
-define qemu-arch-for-target-arch
-$(strip $(if $(filter $(HOST_ARCH),$(1)),, \
-  $(if $(filter $(HOST_ARCH)-$(1),$(SUPPORTED_ARCH_PAIRS)),, \
-    $(if $(filter $(1),alpha arm armeb i386 m68k mips mipsel ppc64 sh4 sh4eb sparc sparc64 s390x), \
-      $(1), \
-      $(if $(filter $(1),amd64), \
-        x86_64, \
-        $(if $(filter $(1),armel armhf), \
-          arm, \
-          $(if $(filter $(1),arm64), \
-            aarch64, \
-            $(if $(filter $(1),lpia), \
-              i386, \
-              $(if $(filter $(1),powerpc powerpcspe), \
-                ppc, \
-                $(if $(filter $(1),ppc64el), \
-                  ppc64le, \
-                  $(error Sorry, I dont know how to support arch $(1)) \
-                ) \
-              ) \
-            ) \
-          ) \
-        ) \
-      ) \
-    ) \
-  ) \
-))
+define do-qemu-binary
+$(hide) if [ -z "$$(ls -1 $(PRIVATE_PATH)/qemu/qemu-*-static 2>/dev/null)" ]; then \
+  mkdir -p "$(PRIVATE_PATH)/qemu"; \
+  $(DOCKER) run --rm --volume "$(abspath $(PRIVATE_PATH)/qemu)":/export $(DOCKER_REPO):$(PRIVATE_TARGET) \
+    /bin/sh -xc '(cd /tmp; apt-get update --quiet && apt-get download qemu-user-static && dpkg-deb -x *.deb .) && cp /tmp/usr/bin/qemu-*-static /export'; \
+  $$(ls -1 $(PRIVATE_PATH)/qemu/qemu-*-static | head -n 1) -version; \
+fi
+
+endef
+
+# $(1): relative directory path, e.g. "jessie/amd64", "jessie/amd64/scm"
+# $(2): target name, e.g. jessie-amd64-scm
+# $(3): suite name, e.g. jessie
+define define-qemu-binary-target
+.PHONY: qemu-binary-$(3)
+qemu-binary-$(3): PRIVATE_PATH := $(1)
+qemu-binary-$(3): PRIVATE_TARGET := $(2)
+qemu-binary-$(3): docker-build-$(2)
+	$$(call do-qemu-binary)
+
 endef
 
 # $(1): relative directory path, e.g. "jessie/amd64", "jessie/amd64/scm"
 # $(2): target name, e.g. jessie-amd64-scm
 # $(3): qemu arch, e.g. x86_64
+# $(4): qemu suite, e.g. xenial
 define define-qemu-static-target
-$(1)/qemu-$(3)-static:
-	$$(hide) cp $$$$(which $$(@F)) $$@
+$(1)/qemu-$(3)-static: PRIVATE_QEMU_ARCH := $(3)
+$(1)/qemu-$(3)-static: PRIVATE_QEMU_SUITE := $(4)
+$(1)/qemu-$(3)-static: qemu-binary-$(4)
+	$$(hide) cp $$(PRIVATE_QEMU_SUITE)/$$(DEFAULT_ARCH)/qemu/qemu-$$(PRIVATE_QEMU_ARCH)-static $$@
 
 $(2): | $(1)/qemu-$(3)-static
 endef
@@ -190,12 +192,12 @@ endef
 # $(4): arch name, e.g. amd64
 define define-dockerfile-target
 $(eval dockerfile := $(1)/Dockerfile)
-$(eval qemuarch := $(call qemu-arch-for-target-arch,$(4)))
+$(eval qemuarch := $(call get-qemu-arch,$(DEFAULT_ARCH),$(4)))
 dockerfiles: $(dockerfile)
 $(dockerfile): PRIVATE_SUITE := $(3)
 $(dockerfile): PRIVATE_ARCH := $(4)
 $(dockerfile): PRIVATE_QEMU_ARCH := $(qemuarch)
-$(if $(qemuarch),$(call define-qemu-static-target,$(1),$(dockerfile),$(qemuarch)))
+$(if $(qemuarch),$(call define-qemu-static-target,$(1),$(dockerfile),$(qemuarch),$(call get-qemu-suite,$(3))))
 $(dockerfile): Dockerfile.template
 	$$(call do-dockerfile)
 
@@ -328,6 +330,8 @@ endef
 # $(3): suite name, e.g. jessie
 # $(4): arch name, e.g. amd64
 define define-docker-target
+$(if $(filter $(DEFAULT_ARCH),$(4)), \
+  $(call define-qemu-binary-target,$(1),$(2),$(3)))
 $(call define-docker-tag-target,$(1),$(2),$(3),$(4))
 $(eval ALL_TARGETS += $(2))
 
