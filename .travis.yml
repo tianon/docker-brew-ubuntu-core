@@ -24,12 +24,6 @@ env:
   - VARIANT=xenial-i386
   - VARIANT=xenial-ppc64el
   - VARIANT=xenial-s390x
-  - VARIANT=yakkety-amd64
-  - VARIANT=yakkety-arm64
-  - VARIANT=yakkety-armhf
-  - VARIANT=yakkety-i386
-  - VARIANT=yakkety-ppc64el
-  - VARIANT=yakkety-s390x
   - VARIANT=zesty-amd64
   - VARIANT=zesty-arm64
   - VARIANT=zesty-armhf
@@ -42,7 +36,6 @@ matrix:
   allow_failures:
   - env: VARIANT=artful-s390x
   - env: VARIANT=xenial-s390x
-  - env: VARIANT=yakkety-s390x
   - env: VARIANT=zesty-s390x
 
 branches:
