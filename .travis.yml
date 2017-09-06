@@ -1,0 +1,53 @@
+sudo: required
+services:
+- docker
+
+env:
+  global:
+  - DOCKER_REPO=ubuntu
+  - secure: "BTSuC+Y0IspLOl+CRUwgy8g4DsavDdyF9GOD97YkKy7hkHWF+tR8N3W5wgPMpO2JXhKBY8nmj1p32AlMFu42oGtfZEl25yRBhEkHf8pjB7hdSYs51GFcwblI+jjm4hUAkkAHcbpl6GtG/1JkXqhDl59NykKsYtXAPuAbsP/9uEk="
+  matrix:
+  - VARIANT=trusty-amd64
+  - VARIANT=trusty-arm64
+  - VARIANT=trusty-armhf
+  - VARIANT=trusty-i386
+  - VARIANT=trusty-ppc64el
+  - VARIANT=xenial-amd64
+  - VARIANT=xenial-arm64
+  - VARIANT=xenial-armhf
+  - VARIANT=xenial-i386
+  - VARIANT=xenial-ppc64el
+  - VARIANT=xenial-s390x
+  - VARIANT=zesty-amd64
+  - VARIANT=zesty-arm64
+  - VARIANT=zesty-armhf
+  - VARIANT=zesty-i386
+  - VARIANT=zesty-ppc64el
+  - VARIANT=zesty-s390x
+
+matrix:
+  fast_finish: true
+  allow_failures:
+  - env: VARIANT=xenial-s390x
+  - env: VARIANT=zesty-s390x
+
+branches:
+  only:
+  - master
+
+before_install:
+- docker run --rm --privileged vicamo/binfmt-qemu:latest
+- cat /proc/sys/fs/binfmt_misc/qemu-*
+
+script:
+- echo "${DOCKER_USER}/${DOCKER_REPO}" > repo
+- make V=1 -j $(nproc) $VARIANT
+- docker images | grep ^${DOCKER_USER}/${DOCKER_REPO} | awk '{print $1 ":" $2}'
+
+after_success:
+- if [ "${TRAVIS_PULL_REQUEST}" == "false" ]; then
+    docker login -u "${DOCKER_USER}" -p "${DOCKER_PASS}";
+    for image in $(docker images | grep ^${DOCKER_USER}/${DOCKER_REPO} | awk '{print $1 ":" $2}'); do
+      docker push $image;
+    done
+  fi
