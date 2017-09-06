@@ -13,70 +13,49 @@ declare -A noVersion=(
 	#[suite]=1
 )
 
-develSuite="$(wget -qO- http://archive.ubuntu.com/ubuntu/dists/devel/Release | awk -F ': ' '$1 == "Codename" { print $2; exit }' || true)"
+develSuite="$(
+	wget -qO- http://archive.ubuntu.com/ubuntu/dists/devel/Release \
+		| awk -F ': ' '$1 == "Codename" { print $2; exit }' \
+		|| true
+)"
 if [ "$develSuite" ]; then
 	aliases[$develSuite]+=' devel'
 fi
 
-get_part() {
-	local dir="$1"
-	shift
-	local part="$1"
-	shift
-	if [ -f "$dir/$part" ]; then
-		cat "$dir/$part"
-		return 0
-	fi
-	if [ -f "$part" ]; then
-		cat "$part"
-		return 0
-	fi
-	if [ $# -gt 0 ]; then
-		echo "$1"
-		return 0
-	fi
-	return 1
-}
+archMaps=( $(
+	git ls-remote --heads https://github.com/tianon/docker-brew-ubuntu-core.git \
+		| awk -F '[\t/]' '$4 ~ /^dist-/ { gsub(/^dist-/, "", $4); print $4 "=" $1 }' \
+		| sort
+) )
+arches=()
+declare -A archCommits=()
+for archMap in "${archMaps[@]}"; do
+	arch="${archMap%%=*}"
+	commit="${archMap#${arch}=}"
+	arches+=( "$arch" )
+	archCommits[$arch]="$commit"
+done
 
 versions=( */ )
 versions=( "${versions[@]%/}" )
 
-tasks=()
-for v in "${versions[@]}"; do
-	arches=( $v/*/ )
-	arches=( "${arches[@]%/}" )
-	arches=( "${arches[@]#$v/}" )
-	for arch in "${arches[@]}"; do
-		dir="$(readlink -f "$v/$arch")"
-
-		skip="$(get_part "$dir" skip '')"
-		if [ -n "$skip" ]; then
-			echo "Skipping $v/$arch, reason: $skip"
-			continue;
-		fi
-
-		tasks+=( $v/$arch )
-	done
-done
-
 cat <<-EOH
-# Maintained by Tianon as proxy for upstream's offical builds.
-
-Maintainers: Tianon Gravi <tianon@debian.org> (@tianon)
-GitRepo: https://github.com/tianon/docker-brew-ubuntu-core.git
-GitFetch: refs/heads/dist
+# Maintained by Tianon as proxy for upstream's official builds.
 
 # see https://partner-images.canonical.com/core/
 # see also https://wiki.ubuntu.com/Releases#Current
-EOH
 
-commitRange='master..dist'
-commitCount="$(git rev-list "$commitRange" --count 2>/dev/null || true)"
-if [ "$commitCount" ] && [ "$commitCount" -gt 0 ]; then
-	echo
-	echo '# commits:' "($commitRange)"
-	git log --format=format:'- %h %s%n%w(0,2,2)%b' "$commitRange" | sed 's/^/#  /'
-fi
+Maintainers: Tianon Gravi <tianon@debian.org> (@tianon)
+GitRepo: https://github.com/tianon/docker-brew-ubuntu-core.git
+GitCommit: $(git log --format='format:%H' -1)
+EOH
+for arch in "${arches[@]}"; do
+	cat <<-EOA
+		# https://github.com/tianon/docker-brew-ubuntu-core/tree/dist-${arch}
+		${arch}-GitFetch: refs/heads/dist-${arch}
+		${arch}-GitCommit: ${archCommits[$arch]}
+	EOA
+done
 
 # prints "$2$1$3$1...$N"
 join() {
@@ -85,52 +64,40 @@ join() {
 	echo "${out#$sep}"
 }
 
-systemArch="$(dpkg --print-architecture)"
-for task in "${tasks[@]}"; do
-	version=$(echo $task | cut -d / -f 1)
-	arch=$(echo $task | cut -d / -f 2)
-
-	tarball="$version/$arch/ubuntu-$version-core-cloudimg-$arch-root.tar.gz"
-	commit="$(git log -1 --format='format:%H' -- "$version/$arch")"
-
-	serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>/dev/null || true)"
-	[ "$serial" ] || continue
+for version in "${versions[@]}"; do
+	versionArches=()
+	versionSerial=
+	for arch in "${arches[@]}"; do
+		if buildInfo="$(wget -qO- "https://raw.githubusercontent.com/tianon/docker-brew-ubuntu-core/${archCommits[$arch]}/${version}/build-info.txt")"; then
+			versionArches+=( "$arch" )
+			archSerial="$(echo "$buildInfo" | awk -F '=' '$1 == "SERIAL" { print $2; exit }')"
+			if [ ! -z "$versionSerial" ] && [ "$versionSerial" != "$archSerial" ]; then
+				echo >&2 "error: inconsistent serials for '$version'! ('$versionSerial' vs '$archSerial' in '$arch')"
+				exit 1
+			fi
+			versionSerial="$archSerial"
+		fi
+	done
 
 	versionAliases=()
 
 	[ -s "$version/alias" ] && versionAliases+=( $(< "$version/alias") )
 
-	if [ -z "${noVersion[$version]}" ]; then
-		fullVersion="$(git show "$commit:$tarball" | tar -xvz etc/debian_version --to-stdout 2>/dev/null || true)"
-		if [ -z "$fullVersion" ] || [[ "$fullVersion" == */sid ]]; then
-			fullVersion="$(eval "$(git show "$commit:$tarball" | tar -xvz etc/os-release --to-stdout 2>/dev/null || true)" && echo "$VERSION" | cut -d' ' -f1)"
-		fi
-		if [ "$fullVersion" ]; then
-			#versionAliases+=( $fullVersion )
-			if [ "${fullVersion%.*.*}" != "$fullVersion" ]; then
-				# three part version like "12.04.4"
-				#versionAliases+=( ${fullVersion%.*} )
-				versionAliases=( $fullVersion "${versionAliases[@]}" )
-			fi
-		fi
-	fi
-	versionAliases+=( $version-$serial $version ${aliases[$version]} )
+	versionAliases+=( $version-$versionSerial )
 
-	archedVersionAliases=()
-	for a in ${versionAliases[@]}; do
-		archedVersionAliases+=( $(echo $a | sed 's,^\([^-]\+\)-,\1-'$arch'-,; s,^\([^-]\+\)$,\1-'$arch',') )
-	done
-	if [ "$arch" == "$systemArch" ]; then
-		versionAliases+=( ${archedVersionAliases[@]} )
-	else
-		versionAliases=( ${archedVersionAliases[@]} )
-	fi
+	versionAliases+=(
+		$version
+		${aliases[$version]}
+	)
+
+	# assert some amount of sanity
+	[ "${#versionArches[@]}" -gt 0 ]
 
 	echo
 	cat <<-EOE
-		# $serial
+		# $versionSerial ($version)
 		Tags: $(join ', ' "${versionAliases[@]}")
-		GitCommit: $commit
-		Directory: $version/$arch
+		Architectures: $(join ', ' "${versionArches[@]}")
+		Directory: $version
 	EOE
 done
