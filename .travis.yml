@@ -7,6 +7,12 @@ env:
   - DOCKER_REPO=ubuntu
   - secure: "BTSuC+Y0IspLOl+CRUwgy8g4DsavDdyF9GOD97YkKy7hkHWF+tR8N3W5wgPMpO2JXhKBY8nmj1p32AlMFu42oGtfZEl25yRBhEkHf8pjB7hdSYs51GFcwblI+jjm4hUAkkAHcbpl6GtG/1JkXqhDl59NykKsYtXAPuAbsP/9uEk="
   matrix:
+  - VARIANT=artful-amd64
+  - VARIANT=artful-arm64
+  - VARIANT=artful-armhf
+  - VARIANT=artful-i386
+  - VARIANT=artful-ppc64el
+  - VARIANT=artful-s390x
   - VARIANT=trusty-amd64
   - VARIANT=trusty-arm64
   - VARIANT=trusty-armhf
@@ -34,6 +40,7 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
+  - env: VARIANT=artful-s390x
   - env: VARIANT=xenial-s390x
   - env: VARIANT=yakkety-s390x
   - env: VARIANT=zesty-s390x
