@@ -13,6 +13,12 @@ env:
   - VARIANT=artful-i386
   - VARIANT=artful-ppc64el
   - VARIANT=artful-s390x
+  - VARIANT=bionic-amd64
+  - VARIANT=bionic-arm64
+  - VARIANT=bionic-armhf
+  - VARIANT=bionic-i386
+  - VARIANT=bionic-ppc64el
+  - VARIANT=bionic-s390x
   - VARIANT=trusty-amd64
   - VARIANT=trusty-arm64
   - VARIANT=trusty-armhf
@@ -35,6 +41,7 @@ matrix:
   fast_finish: true
   allow_failures:
   - env: VARIANT=artful-s390x
+  - env: VARIANT=bionic-s390x
   - env: VARIANT=xenial-s390x
   - env: VARIANT=zesty-s390x
 
