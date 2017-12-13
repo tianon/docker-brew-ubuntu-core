@@ -46,7 +46,7 @@ for v in "${versions[@]}"; do
 	(
 		cd "$v"
 		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'} || true
-		wget -N "$baseUrl/$thisTar"
+		wget -N --progress=dot:giga "$baseUrl/$thisTar"
 	)
 
 	cat > "$v/Dockerfile" <<EOF
