@@ -1,4 +1,4 @@
-# tl;dr: git clone --single-branch https://github.com/tianon/docker-brew-ubuntu-core.git
+# tl;dr: `git clone --single-branch https://github.com/tianon/docker-brew-ubuntu-core.git`
 ## DO NOT OPEN PULL REQUESTS TO UPDATE IMAGES
 
 # Scripts to prepare updates to the Ubuntu official Docker images
@@ -13,10 +13,10 @@ The process for updating the images goes like this:
    defined by
    https://github.com/docker-library/oi-janky-groovy/blob/master/tianon/update-ubuntu-pipeline.groovy)
 
-3. This updates each arch-* branches of
+3. This updates each `arch-*` branch of
    https://github.com/tianon/docker-brew-ubuntu-core/ to be one commit ahead of
    master, that commit adding tarballs/Dockerfiles/manifests/checksums for each
-   supported release of Ubuntu (this is why you pass --single-branch to clone
+   supported release of Ubuntu (this is why you pass `--single-branch` to clone
    to get this repo, you don't want to be downloading all these tarballs)
 
 4. `generate-stackbrew-library.sh` from this repo is run on a developer machine
@@ -34,6 +34,6 @@ The process for updating the images goes like this:
 8. The new images are published on https://hub.docker.com
 
 Please feel free to open issues and discuss these images.  You can submit pull
-requests to update the scripts, but submitting pull requests the the arch-*
-branches to update the image does not work and only upsets the pig, or something
-like that.
+requests to update the scripts, but submitting pull requests to the `arch-*`
+branches to update the images does not work and only upsets the pig, or
+something like that.
