@@ -40,12 +40,10 @@ versions=( */ )
 versions=( "${versions[@]%/}" )
 
 cat <<-EOH
-# Maintained by Tianon as proxy for upstream's official builds.
-
 # see https://partner-images.canonical.com/core/
 # see also https://wiki.ubuntu.com/Releases#Current
 
-Maintainers: Tianon Gravi <tianon@debian.org> (@tianon)
+Maintainers: Tianon Gravi <tianon@debian.org> (@tianon), Michael Hudson-Doyle <michael.hudson@ubuntu.com> (@mwhudson)
 GitRepo: https://github.com/tianon/docker-brew-ubuntu-core.git
 GitCommit: $(git log --format='format:%H' -1)
 EOH
