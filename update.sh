@@ -90,6 +90,7 @@ RUN set -xe \
 # delete all the apt list files since they're big and get stale quickly
 RUN rm -rf /var/lib/apt/lists/*
 # this forces "apt-get update" in dependent images, which is also good
+# (see also https://bugs.launchpad.net/cloud-images/+bug/1699913)
 
 # enable the universe
 RUN sed -i 's/^#\s*\(deb.*universe\)$/\1/g' /etc/apt/sources.list
