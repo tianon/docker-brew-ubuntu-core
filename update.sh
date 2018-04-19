@@ -120,7 +120,7 @@ if [ "$arch" = "$hostArch" ]; then
 			echo >&2 "warning: $v/Dockerfile does not exist; skipping $v"
 			continue
 		fi
-		( set -x; docker build -t "$repo:$v" "$v" )
+		( set -x; docker build --squash -t "$repo:$v" "$v" )
 		serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt")"
 		if [ "$serial" ]; then
 			( set -x; docker tag "$repo:$v" "$repo:$v-$serial" )
