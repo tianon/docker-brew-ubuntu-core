@@ -1,5 +1,7 @@
 # tl;dr: `git clone --single-branch https://github.com/tianon/docker-brew-ubuntu-core.git`
-## DO NOT OPEN PULL REQUESTS TO UPDATE IMAGES
+
+Please do not open pull requests to update images. We're super happy to get PRs
+for anything else other than updating the packages in an image though!
 
 # Scripts to prepare updates to the Ubuntu official Docker images
 
@@ -34,6 +36,6 @@ The process for updating the images goes like this:
 8. The new images are published on https://hub.docker.com
 
 Please feel free to open issues and discuss these images.  You can submit pull
-requests to update the scripts, but submitting pull requests to the `arch-*`
-branches to update the images does not work and only upsets the pig, or
-something like that.
+requests to update the scripts and image metadata, but submitting pull requests
+to the `arch-*` branches to update the images does not work and only upsets the
+pig, or something like that.
