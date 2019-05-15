@@ -104,31 +104,3 @@ EOF
 done
 
 ( set -x; ./verify.sh "${toVerify[@]}" )
-
-if [ "$arch" = "$hostArch" ]; then
-	repo="$(cat repo 2>/dev/null || true)"
-	if [ -z "$repo" ]; then
-		user="$(docker info | awk -F ': ' '$1 == "Username" { print $2; exit }')"
-		repo="${user:+$user/}ubuntu-core"
-	fi
-	latest="$(< latest)"
-	for v in "${versions[@]}"; do
-		if [ ! -f "$v/Dockerfile" ]; then
-			echo >&2 "warning: $v/Dockerfile does not exist; skipping $v"
-			continue
-		fi
-		( set -x; docker build -t "$repo:$v" "$v" )
-		serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt")"
-		if [ "$serial" ]; then
-			( set -x; docker tag "$repo:$v" "$repo:$v-$serial" )
-		fi
-		if [ -s "$v/alias" ]; then
-			for a in $(< "$v/alias"); do
-				( set -x; docker tag "$repo:$v" "$repo:$a" )
-			done
-		fi
-		if [ "$v" = "$latest" ]; then
-			( set -x; docker tag "$repo:$v" "$repo:latest" )
-		fi
-	done
-fi
