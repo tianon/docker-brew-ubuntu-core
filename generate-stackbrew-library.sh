@@ -1,5 +1,5 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -Eeuo pipefail
 
 cd "$(dirname "$(readlink -f "$BASH_SOURCE")")"
 
@@ -68,7 +68,7 @@ for version in "${versions[@]}"; do
 	for arch in "${arches[@]}"; do
 		if buildInfo="$(wget -qO- "https://raw.githubusercontent.com/tianon/docker-brew-ubuntu-core/${archCommits[$arch]}/${version}/build-info.txt")"; then
 			versionArches+=( "$arch" )
-			archSerial="$(echo "$buildInfo" | awk -F '=' '$1 == "SERIAL" { print $2; exit }')"
+			archSerial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' <<<"$buildInfo")"
 			if [ ! -z "$versionSerial" ] && [ "$versionSerial" != "$archSerial" ]; then
 				echo >&2 "error: inconsistent serials for '$version'! ('$versionSerial' vs '$archSerial' in '$arch')"
 				exit 1
@@ -76,6 +76,7 @@ for version in "${versions[@]}"; do
 			versionSerial="$archSerial"
 		fi
 	done
+	[ -n "$versionSerial" ]
 
 	versionAliases=()
 
@@ -85,7 +86,7 @@ for version in "${versions[@]}"; do
 
 	versionAliases+=(
 		$version
-		${aliases[$version]}
+		${aliases[$version]:-}
 	)
 
 	# assert some amount of sanity
