@@ -9,43 +9,21 @@ if [ ${#versions[@]} -eq 0 ]; then
 fi
 versions=( "${versions[@]%/}" )
 
-hostArch="$(dpkg --print-architecture)"
-arch="$(cat arch 2>/dev/null || true)"
-: ${arch:=$hostArch}
+arch="$(< arch)"
 
 toVerify=()
 for v in "${versions[@]}"; do
+	if ! grep -qE "^$arch\$" "$v/arches"; then
+		continue
+	fi
+
 	thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 	thisTar="$thisTarBase-root.tar.gz"
-	baseUrl="https://partner-images.canonical.com/core/$v"
-	if \
-		wget -q --spider "$baseUrl/current" \
-		&& wget -q --spider "$baseUrl/current/$thisTar" \
-	; then
-		baseUrl+='/current'
-	else
-		# appears to be missing a "current" symlink (or $arch doesn't exist in /current/)
-		# let's enumerate all the directories and try to find one that's satisfactory
-		toAttempt=( $(wget -qO- "$baseUrl/" | awk -F '</?a[^>]*>' '$2 ~ /^[0-9.]+\/$/ { gsub(/\/$/, "", $2); print $2 }' | sort -rn) )
-		current=
-		for attempt in "${toAttempt[@]}"; do
-			if wget -q --spider "$baseUrl/$attempt/$thisTar"; then
-				current="$attempt"
-				break
-			fi
-		done
-		if [ -z "$current" ]; then
-			echo >&2 "warning: cannot find 'current' for $v"
-			echo >&2 "  (checked all dirs under $baseUrl/)"
-			continue
-		fi
-		baseUrl+="/$current"
-		echo "SERIAL=$current" > "$v/build-info.txt" # this will be overwritten momentarily if this directory has one
-	fi
+	baseUrl="https://partner-images.canonical.com/core/$v/current"
 
 	(
 		cd "$v"
-		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'} || true
+		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'}
 		wget -N --progress=dot:giga "$baseUrl/$thisTar"
 	)
 
@@ -113,4 +91,6 @@ EOF
 	toVerify+=( "$v" )
 done
 
-( set -x; ./verify.sh "${toVerify[@]}" )
+if [ "${#toVerify[@]}" -gt 0 ]; then
+	( set -x; ./verify.sh "${toVerify[@]}" )
+fi
