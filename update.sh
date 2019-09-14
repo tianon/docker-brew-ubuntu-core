@@ -84,6 +84,7 @@ RUN set -xe \
 # See: https://github.com/systemd/systemd/blob/aa0c34279ee40bce2f9681b496922dedbadfca19/src/basic/virt.c#L434
 RUN mkdir -p /run/systemd && echo 'docker' > /run/systemd/container
 
+# overwrite this with 'CMD []' in a dependent Dockerfile
 CMD ["/bin/bash"]
 EOF
 
