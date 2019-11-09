@@ -36,8 +36,8 @@ for archMap in "${archMaps[@]}"; do
 	archCommits[$arch]="$commit"
 done
 
-versions=( */ )
-versions=( "${versions[@]%/}" )
+versions=( */alias )
+versions=( "${versions[@]%/alias}" )
 
 cat <<-EOH
 # see https://partner-images.canonical.com/core/
