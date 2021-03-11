@@ -9,43 +9,21 @@ if [ ${#versions[@]} -eq 0 ]; then
 fi
 versions=( "${versions[@]%/}" )
 
-hostArch="$(dpkg --print-architecture)"
-arch="$(cat arch 2>/dev/null || true)"
-: ${arch:=$hostArch}
+arch="$(< arch)"
 
 toVerify=()
 for v in "${versions[@]}"; do
+	if ! grep -qE "^$arch\$" "$v/arches"; then
+		continue
+	fi
+
 	thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 	thisTar="$thisTarBase-root.tar.gz"
-	baseUrl="https://partner-images.canonical.com/core/$v"
-	if \
-		wget -q --spider "$baseUrl/current" \
-		&& wget -q --spider "$baseUrl/current/$thisTar" \
-	; then
-		baseUrl+='/current'
-	else
-		# appears to be missing a "current" symlink (or $arch doesn't exist in /current/)
-		# let's enumerate all the directories and try to find one that's satisfactory
-		toAttempt=( $(wget -qO- "$baseUrl/" | awk -F '</?a[^>]*>' '$2 ~ /^[0-9.]+\/$/ { gsub(/\/$/, "", $2); print $2 }' | sort -rn) )
-		current=
-		for attempt in "${toAttempt[@]}"; do
-			if wget -q --spider "$baseUrl/$attempt/$thisTar"; then
-				current="$attempt"
-				break
-			fi
-		done
-		if [ -z "$current" ]; then
-			echo >&2 "warning: cannot find 'current' for $v"
-			echo >&2 "  (checked all dirs under $baseUrl/)"
-			continue
-		fi
-		baseUrl+="/$current"
-		echo "SERIAL=$current" > "$v/build-info.txt" # this will be overwritten momentarily if this directory has one
-	fi
+	baseUrl="https://partner-images.canonical.com/core/$v/current"
 
 	(
 		cd "$v"
-		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'} || true
+		wget -qN "$baseUrl/"{{MD5,SHA{1,256}}SUMS{,.gpg},"$thisTarBase.manifest",'unpacked/build-info.txt'}
 		wget -N --progress=dot:giga "$baseUrl/$thisTar"
 	)
 
@@ -53,7 +31,6 @@ for v in "${versions[@]}"; do
 FROM scratch
 ADD $thisTar /
 EOF
-
 	cat >> "$v/Dockerfile" <<'EOF'
 
 # a few minor docker-specific tweaks
@@ -85,53 +62,41 @@ RUN set -xe \
 	&& echo 'Acquire::GzipIndexes "true"; Acquire::CompressionTypes::Order:: "gz";' > /etc/apt/apt.conf.d/docker-gzip-indexes \
 	\
 # https://github.com/docker/docker/blob/9a9fc01af8fb5d98b8eec0740716226fadb3735c/contrib/mkimage/debootstrap#L134-L151
-	&& echo 'Apt::AutoRemove::SuggestsImportant "false";' > /etc/apt/apt.conf.d/docker-autoremove-suggests \
+	&& echo 'Apt::AutoRemove::SuggestsImportant "false";' > /etc/apt/apt.conf.d/docker-autoremove-suggests
 # https://wiki.debian.org/UnattendedUpgrades
 # Enable the update/upgrade script (0=disable)
 	&& echo 'APT::Periodic::Enable "0";' > /etc/apt/apt.conf.d/docker-disable-auto-update
+EOF
+
+	if [ "$v" = 'xenial' ]; then
+		cat >> "$v/Dockerfile" <<'EOF'
 
 # delete all the apt list files since they're big and get stale quickly
 RUN rm -rf /var/lib/apt/lists/*
 # this forces "apt-get update" in dependent images, which is also good
 # (see also https://bugs.launchpad.net/cloud-images/+bug/1699913)
+EOF
+	else
+		cat >> "$v/Dockerfile" <<'EOF'
+
+# verify that the APT lists files do not exist
+RUN [ -z "$(apt-get indextargets)" ]
+# (see https://bugs.launchpad.net/cloud-images/+bug/1699913)
+EOF
+	fi
+
+	cat >> "$v/Dockerfile" <<'EOF'
 
 # make systemd-detect-virt return "docker"
 # See: https://github.com/systemd/systemd/blob/aa0c34279ee40bce2f9681b496922dedbadfca19/src/basic/virt.c#L434
 RUN mkdir -p /run/systemd && echo 'docker' > /run/systemd/container
 
-# overwrite this with 'CMD []' in a dependent Dockerfile
 CMD ["/bin/bash"]
 EOF
 
 	toVerify+=( "$v" )
 done
 
-( set -x; ./verify.sh "${toVerify[@]}" )
-
-if [ "$arch" = "$hostArch" ]; then
-	repo="$(cat repo 2>/dev/null || true)"
-	if [ -z "$repo" ]; then
-		user="$(docker info | awk -F ': ' '$1 == "Username" { print $2; exit }')"
-		repo="${user:+$user/}ubuntu-core"
-	fi
-	latest="$(< latest)"
-	for v in "${versions[@]}"; do
-		if [ ! -f "$v/Dockerfile" ]; then
-			echo >&2 "warning: $v/Dockerfile does not exist; skipping $v"
-			continue
-		fi
-		( set -x; docker build -t "$repo:$v" "$v" )
-		serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$v/build-info.txt")"
-		if [ "$serial" ]; then
-			( set -x; docker tag "$repo:$v" "$repo:$v-$serial" )
-		fi
-		if [ -s "$v/alias" ]; then
-			for a in $(< "$v/alias"); do
-				( set -x; docker tag "$repo:$v" "$repo:$a" )
-			done
-		fi
-		if [ "$v" = "$latest" ]; then
-			( set -x; docker tag "$repo:$v" "$repo:latest" )
-		fi
-	done
+if [ "${#toVerify[@]}" -gt 0 ]; then
+	( set -x; ./verify.sh "${toVerify[@]}" )
 fi
