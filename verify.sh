@@ -26,13 +26,23 @@ arch="$(cat arch 2>/dev/null || true)"
 : ${arch:=$hostArch}
 
 for v in "${versions[@]}"; do
-	thisTarBase="ubuntu-$v-core-cloudimg-$arch"
-	thisTar="$thisTarBase-root.tar.gz"
-	baseUrl="https://partner-images.canonical.com/core/$v"
-	for sums in sha256 sha1 md5; do
+	case "$v" in
+		bionic | focal | groovy | hirsute | trusty | xenial)
+			thisTarBase="ubuntu-$v-core-cloudimg-$arch"
+			thisTar="$thisTarBase-root.tar.gz"
+			sumTypes=( sha256 sha1 md5 )
+			;;
+
+		*)
+			thisTarBase="ubuntu-$v-oci-$arch"
+			thisTar="$thisTarBase-root.tar.gz"
+			sumTypes=( sha256 )
+			;;
+	esac
+	for sums in "${sumTypes[@]}"; do
 		sumsFile="$v/${sums^^}SUMS" # "SHA256SUMS"
 		sumCmd="${sums}sum" # "sha256sum"
-		if [ "$gpgFingerprint" ]; then
+		if [ -n "$gpgFingerprint" ]; then
 			if [ ! -f "$sumsFile.gpg" ]; then
 				echo >&2 "warning: '$sumsFile.gpg' appears to be missing!"
 				badness=1
@@ -40,7 +50,7 @@ for v in "${versions[@]}"; do
 				( set -x; gpg --batch --verify "$sumsFile.gpg" "$sumsFile" )
 			fi
 		fi
-		if [ -f "$sumsFile" ]; then
+		if [ -s "$sumsFile" ]; then
 			grep " *$thisTar\$" "$sumsFile" | ( set -x; cd "$v" && "$sumCmd" -c - )
 		else
 			echo >&2 "warning: missing '$sumsFile'!"
