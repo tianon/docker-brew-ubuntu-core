@@ -18,7 +18,7 @@ for v in "${versions[@]}"; do
 	fi
 
 	case "$v" in
-		bionic | focal | groovy | hirsute | trusty | xenial)
+		trusty | xenial)
 			thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 			thisTar="$thisTarBase-root.tar.gz"
 			baseUrl="https://partner-images.canonical.com/core/$v/current"
