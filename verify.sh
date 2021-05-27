@@ -27,7 +27,7 @@ arch="$(cat arch 2>/dev/null || true)"
 
 for v in "${versions[@]}"; do
 	case "$v" in
-		bionic | focal | groovy | hirsute | trusty | xenial)
+		trusty | xenial)
 			thisTarBase="ubuntu-$v-core-cloudimg-$arch"
 			thisTar="$thisTarBase-root.tar.gz"
 			sumTypes=( sha256 sha1 md5 )
