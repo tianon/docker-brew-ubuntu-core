@@ -17,7 +17,7 @@ if [ -z "$gpgFingerprint" ]; then
 	badness=1
 else
 	export GNUPGHOME="$(mktemp -d)"
-	trap "rm -r '$GNUPGHOME'" EXIT
+	trap "gpgconf --kill all || :; rm -rf '$GNUPGHOME'" EXIT
 	gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$gpgFingerprint"
 fi
 
