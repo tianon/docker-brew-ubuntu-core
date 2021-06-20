@@ -63,6 +63,7 @@ join() {
 }
 
 for version in "${versions[@]}"; do
+<<<<<<< HEAD
 	versionArches=()
 	versionSerial=
 	for arch in "${arches[@]}"; do
@@ -77,24 +78,34 @@ for version in "${versions[@]}"; do
 		fi
 	done
 	[ -n "$versionSerial" ]
+=======
+	# TODO serial="$(awk -F '=' '$1 == "SERIAL" { print $2; exit }' "$version/build-info.txt" 2>/dev/null || true)"
+	# [ "$serial" ] || continue
+>>>>>>> parent of 6cf50f6 (Add "serial" aliases too)
 
 	versionAliases=()
 
 	[ -s "$version/alias" ] && versionAliases+=( $(< "$version/alias") )
 
-	versionAliases+=( $version-$versionSerial )
+	# TODO versionAliases+=( $version-$serial )
 
 	versionAliases+=(
 		$version
 		${aliases[$version]:-}
 	)
 
+	versionArches=()
+	for arch in "${arches[@]}"; do
+		if wget --quiet --spider "https://github.com/tianon/docker-brew-ubuntu-core/raw/${archCommits[$arch]}/${version}/Dockerfile"; then
+			versionArches+=( "$arch" )
+		fi
+	done
+
 	# assert some amount of sanity
 	[ "${#versionArches[@]}" -gt 0 ]
 
 	echo
 	cat <<-EOE
-		# $versionSerial ($version)
 		Tags: $(join ', ' "${versionAliases[@]}")
 		Architectures: $(join ', ' "${versionArches[@]}")
 		Directory: $version
