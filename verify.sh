@@ -18,7 +18,7 @@ if [ -z "$gpgFingerprint" ]; then
 else
 	export GNUPGHOME="$(mktemp -d)"
 	trap "gpgconf --kill all || :; rm -rf '$GNUPGHOME'" EXIT
-	gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$gpgFingerprint"
+	gpg --keyserver keyserver.ubuntu.com --recv-keys "$gpgFingerprint"
 fi
 
 hostArch="$(dpkg --print-architecture)"
