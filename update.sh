@@ -110,6 +110,10 @@ EOF
 			;;
 	esac
 
+	if [ -f "$v/Dockerfile.append" ]; then
+		cat "$v/Dockerfile.append" >>"$v/Dockerfile"
+	fi
+
 	toVerify+=( "$v" )
 done
 
