@@ -1,0 +1,4 @@
+LABEL org.opencontainers.image.vendor="Canonical Ltd."
+LABEL org.opencontainers.image.version=16.04
+LABEL com.canonical.support.end-date=2021-04-30
+LABEL com.canonical.support.info=https://ubuntu.com/security/docker-images
