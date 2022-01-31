@@ -1,0 +1,94 @@
+name: Update Branches
+
+# we only want to run this job manually via button pushing
+on:
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: 'bash -Eeuo pipefail -x {0}'
+env:
+  TZ: UTC
+
+concurrency:
+  group: update-branches
+  cancel-in-progress: true
+
+jobs:
+
+  generate:
+    name: Generate Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      arches: ${{ steps.generate.outputs.arches }}
+    steps:
+      - uses: actions/checkout@v2
+      - id: generate
+        name: Generate
+        run: |
+          arches="$(jq -Rsc 'rtrimstr("\n") | split("\n") | unique' */arches)"
+          echo "::set-output name=arches::$arches"
+
+  arch:
+    needs: generate
+    strategy:
+      matrix:
+        arch: ${{ fromJSON(needs.generate.outputs.arches) }}
+    name: Update ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    env:
+      dpkgArch: ${{ matrix.arch }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Prep
+        id: prep
+        run: |
+          case "$dpkgArch" in
+            amd64 | i386 | riscv64 | s390x) bashbrewArch="$dpkgArch" ;;
+            armhf) bashbrewArch='arm32v7' ;;
+            arm64) bashbrewArch='arm64v8' ;;
+            ppc64el) bashbrewArch='ppc64le' ;;
+            *) echo >&2 "error: unexpected / unsupported architecture: '$dpkgArch'"; exit 1 ;;
+          esac
+          echo "::set-output name=bashbrewArch::$bashbrewArch"
+          echo "bashbrewArch=$bashbrewArch" >> "$GITHUB_ENV"
+
+          git config user.name 'Docker Library Bot'
+          git config user.email 'github+dockerlibrarybot@infosiftr.com'
+
+      - name: Download Artifacts
+        run: |
+          echo "$dpkgArch" > arch
+          ./update.sh
+
+      - name: Commit
+        run: |
+          git add arch
+          for dir in */; do
+            dir="${dir%/}"
+            if [ ! -f "$dir/Dockerfile" ]; then
+              rm -rf "$dir"
+            fi
+            git add -A "$dir"
+          done
+
+          latestSerial="$(
+            gawk -F '=' '$1 == "SERIAL" { print $2 }' */build-info.txt \
+              | sort -un \
+              | tail -1
+          )"
+
+          latestDate="${latestSerial%%[^0-9]*}"
+          rfc2822="$(date --date "$latestDate" --rfc-2822)"
+          export GIT_AUTHOR_DATE="$rfc2822"
+          export GIT_COMMITTER_DATE="$GIT_AUTHOR_DATE"
+
+          git commit --message "Update to $latestSerial for $bashbrewArch ($dpkgArch)"
+
+      - name: Push
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: dist-${{ steps.prep.outputs.bashbrewArch }}
+          force: true
