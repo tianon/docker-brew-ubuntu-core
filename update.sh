@@ -94,8 +94,8 @@ EOF
 			;;
 
 		*)
-			thisTarBase="ubuntu-$v-oci-$arch"
-			thisTar="$thisTarBase-root.tar.gz"
+			thisTarBase="ubuntu-$v-oci-$arch-root"
+			thisTar="$thisTarBase.tar.gz"
 			baseUrl="https://partner-images.canonical.com/oci/$v/current"
 			(
 				cd "$v"
