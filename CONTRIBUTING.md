@@ -1,3 +1,15 @@
+# DEPRECATED
+
+**Since September 2022 this repository is no longer used.**
+
+Ubuntu OCI rootfs tarballs are now stored in the Launchpad Git repository
+<https://git.launchpad.net/cloud-images/+oci/ubuntu-base>, and PRs to [the
+docker-library/official-images](https://github.com/docker-library/official-images)
+are submitted from the [Ubuntu Cloud
+Images](https://launchpad.net/cloud-images) CI/CD.
+
+For information about Ubuntu OCI base images see <https://hub.docker.com/_/ubuntu>.
+
 # tl;dr: `git clone --single-branch https://github.com/tianon/docker-brew-ubuntu-core.git`
 
 Please do not open pull requests to update images. We're super happy to get PRs
